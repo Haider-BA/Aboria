@@ -238,6 +238,11 @@ public:
 		return data.end();
 	}
 
+	template<int I>
+	Symbolic get() {
+		return Symbolic<I,DataType>(this);
+	}
+
 	void delete_particles() {
 		const int n = data.size();
 		for (int index = 0; index < n; ++index) {
