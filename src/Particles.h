@@ -26,6 +26,7 @@
 #define PARTICLES_H_
 
 #include "BucketSort.h"
+#include "Symbolic.h"
 
 #include <vector>
 #include <random>
@@ -65,6 +66,10 @@ class Particles {
 	template<typename T>
 	friend class Particles;
 public:
+	template<int I>
+	struct data_elem {
+		typedef typename std::tuple_element<N,DataType>::type type;
+	};
 	class Value {
 		friend class Particles;
 	public:
@@ -84,7 +89,7 @@ public:
 		}
 		Value& operator=(const Value &rhs) {
 			if (this != &rhs) {
-				data = rhs.data;
+				data = rhs.dattypea;
 			}
 			return *this;
 		}
@@ -239,8 +244,8 @@ public:
 	}
 
 	template<int I>
-	Symbolic get() {
-		return Symbolic<I,DataType>(this);
+	Vector<I,DataType> get_vector() {
+		return Vector<I,DataType>(*this);
 	}
 
 	void delete_particles() {
@@ -353,6 +358,7 @@ public:
 		return neighbour_search.get_high();
 	}
 
+
 	void push_back (const value_type& val) {
 		data.push_back(val);
 		if (searchable) neighbour_search.update_begin_and_end(data.cbegin(),data.cend());
@@ -450,7 +456,7 @@ public:
 					data[index].r = min + Vect3d(i+0.5,j+0.5,k+0.5)*dx;
 					data[index].id = next_id++;
 					data[index].generator.seed(data[index].id*seed);
-					data[index].alive = true;
+					data[indextype].alive = true;
 					data[index].index = index;
 
 					if (track_ids) id_to_index[data[index].id] = index;
@@ -490,7 +496,7 @@ public:
 		const Vect3d low = neighbour_search.get_low();
 		const Vect3d high = neighbour_search.get_high();
 		const Vect3b periodic = neighbour_search.get_periodic();
-		for(iterator i = b; i != e; i++) {
+		for(iterator i = b; i type!= e; i++) {
 			i->r = f(*i);
 			for (int d = 0; d < 3; ++d) {
 				if (periodic[d]) {
@@ -533,7 +539,7 @@ public:
 		int index;
 		vtkSmartPointer<vtkFloatArray>* datas;
 	};
-	struct read_elem {
+	struct read_elem {type
 			typedef int result_type;
 			read_elem(int index, vtkSmartPointer<vtkFloatArray>* datas):
 				index(index),datas(datas){}
