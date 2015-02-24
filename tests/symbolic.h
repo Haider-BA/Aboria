@@ -39,24 +39,24 @@ public:
     void test_create_double_vector(void) {
     	typedef Particles<std::tuple<double> > ParticlesType;
     	ParticlesType particles;
-    	auto theDouble = particles.get_sym<0>();
+    	auto theDouble = particles.get_vector<0>();
     }
 
     void test_create_default_vectors(void) {
     	typedef Particles<std::tuple<double> > ParticlesType;
     	ParticlesType particles;
     	auto position = particles.get_sym<POSITION>();
-    	auto id = particles.get_sym<ID>();
-    	auto alive = particles.get_sym<ALIVE>();
+    	auto id = particles.get_vector<ID>();
+    	auto alive = particles.get_vector<ALIVE>();
     }
 
     void test_transform(void) {
     	typedef Particles<std::tuple<double> > ParticlesType;
     	ParticlesType particles;
-    	auto theDouble = particles.get_sym<0>();
-    	auto position = particles.get_sym<POSITION>();
-    	auto id = particles.get_sym<ID>();
-    	auto alive = particles.get_sym<ALIVE>();
+    	auto theDouble = particles.get_vector<0>();
+    	auto position = particles.get_vector<POSITION>();
+    	auto id = particles.get_vector<ID>();
+    	auto alive = particles.get_vector<ALIVE>();
 
     	execute(theDouble = 0);
 
