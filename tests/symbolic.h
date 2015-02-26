@@ -45,7 +45,7 @@ public:
     void test_create_default_vectors(void) {
     	typedef Particles<std::tuple<double> > ParticlesType;
     	ParticlesType particles;
-    	auto position = particles.get_sym<POSITION>();
+    	auto position = particles.get_vector<POSITION>();
     	auto id = particles.get_vector<ID>();
     	auto alive = particles.get_vector<ALIVE>();
     }
@@ -58,67 +58,28 @@ public:
     	auto id = particles.get_vector<ID>();
     	auto alive = particles.get_vector<ALIVE>();
 
-    	execute(theDouble = 0);
+    	theDouble = 0;
 
     	ParticlesType::value_type p;
     	particles.push_back(p);
     	particles.push_back(p);
 
-    	execute(theDouble = 0);
+    	theDouble = 0;
 
     	TS_ASSERT_EQUALS(particles[0].get_data_elem<0>(),0);
     	TS_ASSERT_EQUALS(particles[1].get_data_elem<0>(),0);
 
-    	execute(theDouble = 1);
+    	theDouble = 1;
 
     	TS_ASSERT_EQUALS(particles[0].get_data_elem<0>(),1);
     	TS_ASSERT_EQUALS(particles[1].get_data_elem<0>(),1);
 
-    	execute(position = Vect3d(1,2,3));
+    	position = Vect3d(1,2,3);
 
     	TS_ASSERT_EQUALS(particles[0].get_position()[0],1);
     	TS_ASSERT_EQUALS(particles[0].get_position()[1],2);
     	TS_ASSERT_EQUALS(particles[0].get_position()[2],3);
     }
-
-    void test_transform_multiple(void) {
-    	typedef Particles<std::tuple<double> > ParticlesType;
-    	ParticlesType particles;
-    	auto theDouble = particles.get_sym<0>();
-    	auto position = particles.get_sym<POSITION>();
-    	auto id = particles.get_sym<ID>();
-    	auto alive = particles.get_sym<ALIVE>();
-
-    	ParticlesType::value_type p;
-    	particles.push_back(p);
-    	particles.push_back(p);
-
-    	execute([
-    	         theDouble = 2,
-    	         position = Vect3d(1,2,3)
-    	        ]);
-
-    	TS_ASSERT_EQUALS(particles[0].get_data_elem<0>(),2);
-    	TS_ASSERT_EQUALS(particles[1].get_data_elem<0>(),2);
-
-    	TS_ASSERT_EQUALS(particles[0].get_position()[0],1);
-    	TS_ASSERT_EQUALS(particles[0].get_position()[1],2);
-    	TS_ASSERT_EQUALS(particles[0].get_position()[2],3);
-
-    	execute([
-    	         theDouble = 1,
-    	         position = Vect3d(theDouble,theDouble*3,theDouble*theDouble)
-    	         ]);
-
-    	TS_ASSERT_EQUALS(particles[0].get_data_elem<0>(),1);
-    	TS_ASSERT_EQUALS(particles[1].get_data_elem<0>(),1);
-
-    	TS_ASSERT_EQUALS(particles[0].get_position()[0],2);
-    	TS_ASSERT_EQUALS(particles[0].get_position()[1],6);
-    	TS_ASSERT_EQUALS(particles[0].get_position()[2],4);
-
-    }
-
 
 };
 

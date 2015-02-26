@@ -26,8 +26,6 @@
 #define PARTICLES_H_
 
 #include "BucketSort.h"
-#include "Symbolic.h"
-
 #include <vector>
 #include <random>
 #include <string>
@@ -53,6 +51,9 @@
 
 namespace Aboria {
 
+template<int I,typename DataType>
+class DataVector;
+
 template<typename DataType>
 class DataNames {
 public:
@@ -61,15 +62,27 @@ public:
 	}
 };
 
+template<typename DataType, int I>
+struct ParticlesDataElem {
+	typedef typename std::tuple_element<I,DataType>::type type;
+};
+
+template<typename DataType>
+struct ParticlesDataElem<DataType,POSITION> {
+	typedef Vect3d type;
+};
+
+template<typename DataType>
+struct ParticlesDataElem<DataType,ID> {
+	typedef std::size_t type;
+};
+
 template<typename DataType=std::tuple<double> >
 class Particles {
 	template<typename T>
 	friend class Particles;
 public:
-	template<int I>
-	struct data_elem {
-		typedef typename std::tuple_element<N,DataType>::type type;
-	};
+
 	class Value {
 		friend class Particles;
 	public:
@@ -127,13 +140,29 @@ public:
 //		std::tuple_element<N,DataType>::type& get_data_elem() {
 //			return std::get<N>(data);
 //		}
-		template<int N>
-		typename std::tuple_element<N,DataType>::type& get_data_elem() {
-			return std::get<N>(data);
+		template<int I>
+		typename ParticlesDataElem<DataType,I>::type& get_data_elem() {
+			return std::get<I>(data);
 		}
-		template<int N>
-		void set_data_elem(const typename std::tuple_element<N,DataType>::type& arg) {
-			std::get<N>(data) = arg;
+		template<int I>
+		void set_data_elem(const typename ParticlesDataElem<DataType,I>::type& arg) {
+			std::get<I>(data) = arg;
+		}
+		template<>
+		typename ParticlesDataElem<DataType,POSITION>::type& get_data_elem() {
+			return r;
+		}
+		template<>
+		void set_data_elem(const typename ParticlesDataElem<DataType,POSITION>::type& arg) {
+			r = arg;
+		}
+		template<>
+		typename ParticlesDataElem<DataType,ID>::type& get_data_elem() {
+			return id;
+		}
+		template<>
+		void set_data_elem(const typename ParticlesDataElem<DataType,ID>::type& arg) {
+			id = arg;
 		}
 		const size_t get_index() {
 			return index;
@@ -146,7 +175,8 @@ public:
 		}
 		double rand_uniform() {
 			return uni(generator);
-		}
+		}template<class T>
+		template<class X1> void A<T>::g1(T, X1) { }
 		double rand_normal() {
 			return normal(generator);
 		}
@@ -163,7 +193,7 @@ public:
 			return boost::make_iterator_range(
 			 particles->neighbour_search.find_broadphase_neighbours(get_position(), index,false),
 			 particles->neighbour_search.end());
-		}
+		}Vect3d
 
 		template<typename T>
 		Vect3d correct_position_for_periodicity(const T particles, const Vect3d& position) {
@@ -244,8 +274,8 @@ public:
 	}
 
 	template<int I>
-	Vector<I,DataType> get_vector() {
-		return Vector<I,DataType>(*this);
+	DataVector<I,DataType> get_vector() {
+		return DataVector<I,DataType>(*this);
 	}
 
 	void delete_particles() {
@@ -343,7 +373,8 @@ public:
 	}
 
 	void reset_neighbour_search(const double length_scale) {
-		neighbour_search.reset(neighbour_search.get_low(),neighbour_search.get_high(),length_scale,neighbour_search.get_periodic());
+		neighbour_search.reset(neighbour_search.get_template<class T>
+		template<class X1> void A<T>::g1(T, X1) { }low(),neighbour_search.get_high(),length_scale,neighbour_search.get_periodic());
 		neighbour_search.embed_points(data.cbegin(),data.cend());
 		searchable = true;
 	}
@@ -456,7 +487,7 @@ public:
 					data[index].r = min + Vect3d(i+0.5,j+0.5,k+0.5)*dx;
 					data[index].id = next_id++;
 					data[index].generator.seed(data[index].id*seed);
-					data[indextype].alive = true;
+					data[index].alive = true;
 					data[index].index = index;
 
 					if (track_ids) id_to_index[data[index].id] = index;
@@ -496,7 +527,7 @@ public:
 		const Vect3d low = neighbour_search.get_low();
 		const Vect3d high = neighbour_search.get_high();
 		const Vect3b periodic = neighbour_search.get_periodic();
-		for(iterator i = b; i type!= e; i++) {
+		for(iterator i = b; i != e; i++) {
 			i->r = f(*i);
 			for (int d = 0; d < 3; ++d) {
 				if (periodic[d]) {
@@ -539,7 +570,7 @@ public:
 		int index;
 		vtkSmartPointer<vtkFloatArray>* datas;
 	};
-	struct read_elem {type
+	struct read_elem {
 			typedef int result_type;
 			read_elem(int index, vtkSmartPointer<vtkFloatArray>* datas):
 				index(index),datas(datas){}

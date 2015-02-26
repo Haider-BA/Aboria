@@ -8,8 +8,7 @@
 #ifndef DATAVECTOR_H_
 #define DATAVECTOR_H_
 
-#include "Particle.h"
-
+#include "Particles.h"
 
 namespace Aboria {
 
@@ -18,9 +17,9 @@ class DataVector {
 	DataVector(Particles<DataType> &particles):
 		particles(particles)
 	{};
-	typename Particles<DataType>::data_elem<I>::type
-	operator []( std::size_t i ) const {
-		return particles[i].get_data_elem<I>();
+	typename ParticlesDataElem<DataType,I>::type&
+	operator []( std::size_t i ) {
+		return particles[i].template get_data_elem<I>();
 	}
 	Particles<DataType> &get_particles() {
 		return particles;

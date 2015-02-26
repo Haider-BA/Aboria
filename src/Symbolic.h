@@ -74,10 +74,9 @@ struct DataVectorSubscriptCtx
 
 // Here is an evaluation context that verifies that all the
 // DataVectors in an expression have the same particle datastructure.
-template<typename DataType>
 struct DataVectorSameCtx
 {
-	DataVectorSameCtx(Particles<DataType> *particles)
+	DataVectorSameCtx(void *particles)
       : particles(particles)
     {}
 
@@ -109,7 +108,7 @@ struct DataVectorSameCtx
         }
     };
 
-    Particles<DataType> *particles;
+    void *particles;
 };
 
 
@@ -178,9 +177,9 @@ namespace DataVectorOps
 
     // Assign to a DataVector from some expression.
     template<int I, typename DataType, typename Expr>
-    DataVector<I, DataType> &assign(DataVector<I, DataType> &arr, Expr const &expr)
+    DataVector<I, DataType> &operator =(DataVector<I, DataType> &arr, Expr const &expr)
     {
-        DataVectorSameCtx<DataType> const same(arr.get_particles());
+        DataVectorSameCtx const same(arr.get_particles());
         proto::eval(proto::as_expr<DataVectorDomain>(expr), same); // will throw if the particles don't match
         for(std::size_t i = 0; i < arr.size(); ++i) {
             arr[i] = proto::as_expr<DataVectorDomain>(expr)[i];
@@ -192,7 +191,7 @@ namespace DataVectorOps
     template<int I, typename DataType, typename Expr>
     DataVector<I, DataType> &operator +=(DataVector<I, DataType> &arr, Expr const &expr)
     {
-    	DataVectorSameCtx<DataType> const same(arr.get_particles());
+    	DataVectorSameCtx const same(arr.get_particles());
     	proto::eval(proto::as_expr<DataVectorDomain>(expr), same); // will throw if the particles don't match
     	for(std::size_t i = 0; i < arr.size(); ++i) {
     		arr[i] += proto::as_expr<DataVectorDomain>(expr)[i];

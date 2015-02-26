@@ -32,6 +32,7 @@
 #include "Particles.h"
 #include "PrintTuple.h"
 #include "Utils.h"
+#include "DataVector.h"
 
 //#include "ParticleOperators.h"
 
