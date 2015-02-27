@@ -25,13 +25,15 @@
 #ifndef SYMBOLIC_H_
 #define SYMBOLIC_H_
 
-#include "Particles.h"
+#include "DataVector.h"
 
+#include <boost/mpl/bool.hpp>
 #include <boost/proto/core.hpp>
 #include <boost/proto/context.hpp>
+namespace mpl = boost::mpl;
 namespace proto = boost::proto;
 using proto::_;
-
+using proto::N;
 namespace Aboria {
 
 template<typename Expr>
@@ -57,7 +59,7 @@ struct DataVectorSubscriptCtx
     struct eval<
         Expr
       , typename boost::enable_if<
-            proto::matches<Expr, proto::terminal<DataVector<_, _> > >
+            proto::matches<Expr, proto::terminal<DataVector<N, _> > >
         >::type
     >
     {
@@ -93,7 +95,7 @@ struct DataVectorSameCtx
     struct eval<
         Expr
       , typename boost::enable_if<
-            proto::matches<Expr, proto::terminal<DataVector<_, _> > >
+            proto::matches<Expr, proto::terminal<DataVector<N, _> > >
         >::type
     >
     {
@@ -114,7 +116,7 @@ struct DataVectorSameCtx
 
 
 // This grammar describes which TArray expressions
-// are allowed; namely, int and array terminals
+// are allowed; namely, int and array terminalsusing namespace DataVectorOps
 // plus, minus, multiplies and divides of TArray expressions.
 struct DataVectorGrammar
 		: proto::or_<
@@ -128,7 +130,7 @@ struct DataVectorGrammar
 
 
 
-
+		Aboria::
 // Tell proto how to generate expressions in the DataVectorDomain
 struct DataVectorDomain
 		: proto::domain<proto::generator<DataVectorExpr>, DataVectorGrammar >
@@ -167,8 +169,8 @@ struct IsDataVector<DataVector<I,DataType> >
 		: mpl::true_
 		  {};
 
-namespace DataVectorOps
-{
+//namespace DataVectorOps
+//{
     // This defines all the overloads to make expressions involving
     // std::DataVector to build expression templates.
     BOOST_PROTO_DEFINE_OPERATORS(IsDataVector, DataVectorDomain)
@@ -177,7 +179,7 @@ namespace DataVectorOps
 
     // Assign to a DataVector from some expression.
     template<int I, typename DataType, typename Expr>
-    DataVector<I, DataType> &operator =(DataVector<I, DataType> &arr, Expr const &expr)
+    DataVector<I, DataType> &assign(DataVector<I, DataType> &arr, Expr const &expr)
     {
         DataVectorSameCtx const same(arr.get_particles());
         proto::eval(proto::as_expr<DataVectorDomain>(expr), same); // will throw if the particles don't match
@@ -198,7 +200,7 @@ namespace DataVectorOps
     	}
     	return arr;
     }
-}
+//}
 
 
 }

@@ -22,8 +22,8 @@
  *      Author: robinsonm
  */
 
-#ifndef SYMBOLIC_H_
-#define SYMBOLIC_H_
+#ifndef SYMBOLICTEST_H_
+#define SYMBOLICTEST_H_
 
 
 #include <cxxtest/TestSuite.h>
@@ -58,23 +58,23 @@ public:
     	auto id = get_vector<ID>(particles);
     	auto alive = get_vector<ALIVE>(particles);
 
-    	theDouble = 0;
+    	Aboria::assign(theDouble, 0);
 
     	ParticlesType::value_type p;
     	particles.push_back(p);
     	particles.push_back(p);
 
-    	theDouble = 0;
+    	Aboria::assign(theDouble, 0);
 
-    	TS_ASSERT_EQUALS(particles[0].get_data_elem<0>(),0);
-    	TS_ASSERT_EQUALS(particles[1].get_data_elem<0>(),0);
+    	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),0);
+    	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),0);
 
-    	theDouble = 1;
+    	Aboria::assign(theDouble, 1);
 
-    	TS_ASSERT_EQUALS(particles[0].get_data_elem<0>(),1);
-    	TS_ASSERT_EQUALS(particles[1].get_data_elem<0>(),1);
+    	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),1);
+    	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),1);
 
-    	position = Vect3d(1,2,3);
+    	Aboria::assign(position, Vect3d(1,2,3));
 
     	TS_ASSERT_EQUALS(particles[0].get_position()[0],1);
     	TS_ASSERT_EQUALS(particles[0].get_position()[1],2);
@@ -83,4 +83,4 @@ public:
 
 };
 
-#endif /* SYMBOLIC_H_ */
+#endif /* SYMBOLICTEST_H_ */

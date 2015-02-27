@@ -33,6 +33,7 @@
 #include "PrintTuple.h"
 #include "Utils.h"
 #include "DataVector.h"
+#include "Symbolic.h"
 
 //#include "ParticleOperators.h"
 

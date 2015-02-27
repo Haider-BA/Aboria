@@ -148,15 +148,15 @@ public:
 //			return std::get<N>(data);
 //		}
 		template<int I>
-		const typename Elem<I, DataType>::type& get_data_elem() const {
+		const typename Elem<I, Particles<DataType> >::type& get_elem() const {
 			return std::get<I>(data);
 		}
 		template<int I>
-		typename Elem<I, DataType>::type& get_data_elem() {
+		typename Elem<I, Particles<DataType> >::type& get_elem() {
 			return std::get<I>(data);
 		}
 		template<int I>
-		void set_data_elem(const typename Elem<I, DataType>::type& arg) {
+		void set_elem(const typename Elem<I, Particles<DataType> >::type& arg) {
 			std::get<I>(data) = arg;
 		}
 
@@ -742,45 +742,6 @@ private:
 #endif
 };
 
-template<int I, typename ParticlesType>
-typename Elem<I, ParticlesType>::type &get_elem(typename ParticlesType::value_type &i) {
-	return i.template get_data_elem<I>();
-}
-
-template<typename ParticlesType>
-typename Elem<POSITION,ParticlesType>::type &get_elem<POSITION,ParticlesType>(typename ParticlesType::value_type &i) {
-	return ParticlesType::CANNOT_RETURN_A_NONCONST_POSITION;
-}
-
-template<typename ParticlesType>
-typename Elem<ID, ParticlesType>::type &get_elem<ID,ParticlesType>(typename ParticlesType::value_type &i) {
-	return i.get_id();
-}
-
-template<typename ParticlesType>
-typename Elem<ALIVE, ParticlesType>::type &get_elem<ALIVE,ParticlesType>(typename ParticlesType::value_type &i) {
-	return i.get_id();
-}
-
-template<int I, typename ParticlesType>
-const typename Elem<I, ParticlesType>::type &get_elem(const typename ParticlesType::value_type &i) {
-	return i.template get_data_elem<I>();
-}
-
-template<typename ParticlesType>
-const typename Elem<POSITION, ParticlesType>::type &get_elem<POSITION,ParticlesType>(const typename ParticlesType::value_type &i) {
-	return i.get_position();
-}
-
-template<typename ParticlesType>
-const typename Elem<ID, ParticlesType>::type &get_elem<ID,ParticlesType>(const typename ParticlesType::value_type &i) {
-	return i.get_id();
-}
-
-template<typename ParticlesType>
-const typename Elem<ALIVE, ParticlesType>::type &get_elem<ALIVE,ParticlesType>(const typename ParticlesType::value_type &i) {
-	return i.get_id();
-}
 
 
 }
