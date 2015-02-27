@@ -12,21 +12,26 @@
 
 namespace Aboria {
 
-template<int I,typename DataType>
+template<int I, typename ParticlesType>
 class DataVector {
-	DataVector(Particles<DataType> &particles):
+	DataVector(ParticlesType &particles):
 		particles(particles)
 	{};
-	typename ParticlesDataElem<DataType,I>::type&
+	typename Elem<I, ParticlesType>::type&
 	operator []( std::size_t i ) {
-		return particles[i].template get_data_elem<I>();
+		return get_elem<I, ParticlesType>(particles[i]);
 	}
-	Particles<DataType> &get_particles() {
+	ParticlesType &get_particles() {
 		return particles;
 	}
 private:
-	Particles<DataType> &particles;
+	ParticlesType &particles;
 };
+
+template< int I, typename ParticlesType>
+DataVector<I,ParticlesType> get_vector(ParticlesType &p) {
+	return DataVector<I,ParticlesType>(p);
+}
 
 }
 #endif /* DATAVECTOR_H_ */
