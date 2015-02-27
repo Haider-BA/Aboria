@@ -21,6 +21,9 @@ public:
 	ParticlesType &get_particles() {
 		return particles;
 	}
+	std::size_t size() {
+		return particles.size();
+	}
 protected:
 	ParticlesType &particles;
 };

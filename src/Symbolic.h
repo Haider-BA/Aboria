@@ -39,79 +39,123 @@ namespace Aboria {
 template<typename Expr>
 struct DataVectorExpr;
 
-// Here is an evaluation context that indexes into a DataVector
-// expression and combines the result.
+// Here is an evaluation context that indexes into a Vec3
+// expression, and combines the result.
 struct DataVectorSubscriptCtx
+  : proto::callable_context< DataVectorSubscriptCtx const >
 {
-    DataVectorSubscriptCtx(std::size_t i)
+    typedef int result_type;
+
+    DataVectorSubscriptCtx(int i)
       : i_(i)
     {}
 
-    // Unless this is a DataVector terminal, use the
-    // default evaluation context
-    template<typename Expr, typename EnableIf = void>
-    struct eval
-      : proto::default_eval<Expr, DataVectorSubscriptCtx const>
-    {};
-
-    // Index DataVector terminals with our subscript.
-    template<typename Expr>
-    struct eval<
-        Expr
-      , typename boost::enable_if<
-            proto::matches<Expr, proto::terminal<DataVector<N, _> > >
-        >::type
-    >
-    {
-        typedef typename proto::result_of::value<Expr>::type::value_type result_type;
-
-        result_type operator ()(Expr &expr, DataVectorSubscriptCtx const &ctx) const
-        {
-            return proto::value(expr)[ctx.i_];
-        }
-    };
-
-    std::size_t i_;
-};
-
-// Here is an evaluation context that verifies that all the
-// DataVectors in an expression have the same particle datastructure.
-struct DataVectorSameCtx
-{
-	DataVectorSameCtx(void *particles)
-      : particles(particles)
-    {}
-
-    // Unless this is a DataVector terminal, use the
-    // null evaluation context
-    template<typename Expr, typename EnableIf = void>
-    struct eval
-      : proto::null_eval<Expr, DataVectorSameCtx const>
-    {};
-
     // Index array terminals with our subscript. Everything
     // else will be handled by the default evaluation context.
-    template<typename Expr>
-    struct eval<
-        Expr
-      , typename boost::enable_if<
-            proto::matches<Expr, proto::terminal<DataVector<N, _> > >
-        >::type
-    >
+    template<int I, typename DataType>
+    int operator ()(proto::tag::terminal, const DataVector<I,DataType> &arr) const
     {
-        typedef void result_type;
+        return arr[this->i_];
+    }
 
-        result_type operator ()(Expr &expr, DataVectorSameCtx const &ctx) const
-        {
-            if(ctx.particles != proto::value(expr).get_particles())
-            {
-                throw std::runtime_error("LHS and RHS are not compatible");
-            }
-        }
-    };
-
-    void *particles;
+    int i_;
 };
+
+//// Here is an evaluation context that indexes into a DataVector
+//// expression and combines the result.
+//struct DataVectorSubscriptCtx
+//{
+//    DataVectorSubscriptCtx(std::size_t i)
+//      : i_(i)
+//    {}
+//
+//    // Unless this is a DataVector terminal, use the
+//    // default evaluation context
+//    template<typename Expr, typename EnableIf = void>
+//    struct eval
+//      : proto::default_eval<Expr, DataVectorSubscriptCtx const>
+//    {};
+//
+//    // Index DataVector terminals with our subscript.
+//    template<typename Expr>
+//    struct eval<
+//        Expr
+//      , typename boost::enable_if<
+//            proto::matches<Expr, proto::terminal<DataVector<N, _> > >
+//        >::type
+//    >
+//    {
+//        typedef typename proto::result_of::value<Expr>::type::value_type result_type;
+//
+//        result_type operator ()(Expr &expr, DataVectorSubscriptCtx const &ctx) const
+//        {
+//            return proto::value(expr)[ctx.i_];
+//        }
+//    };
+//
+//    std::size_t i_;
+//};
+
+
+  struct DataVectorSameCtx
+		  : proto::callable_context< DataVectorSameCtx, proto::null_context >
+		  {
+			  DataVectorSameCtx(void *particles)
+    	    								  : particles(particles)
+    	    								    {}
+
+			  typedef void result_type;
+
+			  template<int I, typename DataType>
+			  void operator ()(proto::tag::terminal, const DataVector<I,DataType> &arr)
+			  {
+				  if(particles != arr.get_particles())
+				  {
+					  throw std::runtime_error("LHS and RHS are not compatible");
+				  }
+			  }
+
+			  void *particles;
+		  };
+
+//// Here is an evaluation context that verifies that all the
+//// DataVectors in an expression have the same particle datastructure.
+//struct DataVectorSameCtx
+//{
+//	DataVectorSameCtx(void *particles)
+//      : particles(particles)
+//    {}
+//
+//    // Unless this is a DataVector terminal, use the
+//    // null evaluation context
+//    template<typename Expr, typename EnableIf = void>
+//    struct eval
+//      : proto::null_eval<Expr, DataVectorSameCtx const>
+//    {};
+//
+//    // Index array terminals with our subscript. Everything
+//    // else will be handled by the default evaluation context.
+//    template<typename Expr>
+//    struct eval<
+//        Expr
+//      , typename boost::enable_if<
+//            proto::matches<Expr, proto::terminal<DataVector<N, _> > >
+//        >::type
+//    >
+//    {
+//        typedef void result_type;
+//
+//        result_type operator ()(Expr &expr, DataVectorSameCtx const &ctx) const
+//        {
+//            if(ctx.particles != proto::value(expr).get_particles())
+//            {
+//                throw std::runtime_error("LHS and RHS are not compatible");
+//            }
+//        }
+//    };
+//
+//    void *particles;
+//};
 
 
 
@@ -130,7 +174,6 @@ struct DataVectorGrammar
 
 
 
-		Aboria::
 // Tell proto how to generate expressions in the DataVectorDomain
 struct DataVectorDomain
 		: proto::domain<proto::generator<DataVectorExpr>, DataVectorGrammar >
@@ -157,50 +200,100 @@ struct DataVectorExpr
 			}
 };
 
-// Define a trait type for detecting DataVector terminals, to
-// be used by the BOOST_PROTO_DEFINE_OPERATORS macro below.
-template<typename T>
-struct IsDataVector
-		: mpl::false_
-		  {};
+//// Define a trait type for detecting DataVector terminals, to
+//// be used by the BOOST_PROTO_DEFINE_OPERATORS macro below.
+//template<typename T>
+//struct IsDataVector
+//		: mpl::false_
+//		  {};
+//
+//template<int I, typename DataType>
+//struct IsDataVector<DataVector<I,DataType> >
+//		: mpl::true_
+//		  {};
+//
+////namespace DataVectorOps
+////{
+//    // This defines all the overloads to make expressions involving
+//    // std::DataVector to build expression templates.
+//    BOOST_PROTO_DEFINE_OPERATORS(IsDataVector, DataVectorDomain)
+//
+//    typedef DataVectorSubscriptCtx const CDataVectorSubscriptCtx;
+//
+//    // Assign to a DataVector from some expression.
+//    template<int I, typename DataType, typename Expr>
+//    DataVector<I, DataType> &assign(DataVector<I, DataType> &arr, Expr const &expr)
+//    {
+//        DataVectorSameCtx const same(&(arr.get_particles()));
+//        proto::eval(proto::as_expr<DataVectorDomain>(expr), same); // will throw if the particles don't match
+//        for(std::size_t i = 0; i < arr.size(); ++i) {
+//            arr[i] = proto::as_expr<DataVectorDomain>(expr)[i];
+//        }
+//        return arr;
+//    }
+//
+//    // Add-assign to a DataVector from some expression.
+//    template<int I, typename DataType, typename Expr>
+//    DataVector<I, DataType> &operator +=(DataVector<I, DataType> &arr, Expr const &expr)
+//    {
+//    	DataVectorSameCtx const same(&(arr.get_particles()));
+//    	proto::eval(proto::as_expr<DataVectorDomain>(expr), same); // will throw if the particles don't match
+//    	for(std::size_t i = 0; i < arr.size(); ++i) {
+//    		arr[i] += proto::as_expr<DataVectorDomain>(expr)[i];
+//    	}
+//    	return arr;
+//    }
+////}
+		template<int I, typename ParticlesType>
+		struct DataVectorSymbolic
+				: DataVectorExpr< proto::terminal<typename DataVector<I,ParticlesType> >::type >
+				{
+					explicit DataVectorSymbolic(ParticlesType &particles):
+								DataVector<I,ParticlesType>(particles) {};
 
-template<int I, typename DataType>
-struct IsDataVector<DataVector<I,DataType> >
-		: mpl::true_
-		  {};
 
-//namespace DataVectorOps
-//{
-    // This defines all the overloads to make expressions involving
-    // std::DataVector to build expression templates.
-    BOOST_PROTO_DEFINE_OPERATORS(IsDataVector, DataVectorDomain)
+					// Here we override operator [] to give read/write access to
+					// the elements of the array. (We could use the TArrayExpr
+					// operator [] if we made the subscript context smarter about
+					// returning non-const reference when appropriate.)
+					typename Elem<I, ParticlesType>::type &operator [](std::ptrdiff_t i)
+					{
+						return proto::value(*this)[i];
+					}
 
-    typedef DataVectorSubscriptCtx const CDataVectorSubscriptCtx;
+					typename Elem<ID, ParticlesType>::type const &operator [](std::ptrdiff_t i) const
+					{
+						return proto::value(*this)[i];
+					}
 
-    // Assign to a DataVector from some expression.
-    template<int I, typename DataType, typename Expr>
-    DataVector<I, DataType> &assign(DataVector<I, DataType> &arr, Expr const &expr)
-    {
-        DataVectorSameCtx const same(arr.get_particles());
-        proto::eval(proto::as_expr<DataVectorDomain>(expr), same); // will throw if the particles don't match
-        for(std::size_t i = 0; i < arr.size(); ++i) {
-            arr[i] = proto::as_expr<DataVectorDomain>(expr)[i];
-        }
-        return arr;
-    }
+					// Here we define a operator = for TArray terminals that
+					// takes a TArray expression.
+					template< typename Expr >
+					DataVectorSymbolic &operator =(Expr const & expr)
+					{						// expr[i] here uses TArraySubscriptCtx under the covers.
+						(*this)[0] = expr[0];
+						(*this)[1] = expr[1];
+						(*this)[2] = expr[2];
+						return *this;
+						// proto::as_expr<TArrayDomain>(expr) is the same as
+						// expr unless expr is an integer, in which case it
+						// is made into a TArrayExpr terminal first.
+						return this->assign(proto::as_expr<DataVectorDomain>(expr));
+					}
 
-    // Add-assign to a DataVector from some expression.
-    template<int I, typename DataType, typename Expr>
-    DataVector<I, DataType> &operator +=(DataVector<I, DataType> &arr, Expr const &expr)
-    {
-    	DataVectorSameCtx const same(arr.get_particles());
-    	proto::eval(proto::as_expr<DataVectorDomain>(expr), same); // will throw if the particles don't match
-    	for(std::size_t i = 0; i < arr.size(); ++i) {
-    		arr[i] += proto::as_expr<DataVectorDomain>(expr)[i];
-    	}
-    	return arr;
-    }
-//}
+
+				private:
+					template< typename Expr >
+					DataVectorSymbolic &assign(Expr const & expr)
+					{
+						DataVectorSameCtx const same(&(arr.get_particles()));
+						proto::eval(expr, same); // will throw if the particles don't match
+						for(std::size_t i = 0; i < arr.size(); ++i) {
+							(*this)[i] += expr[i];
+						}
+						return *this;
+					}
+				};
 
 
 }
