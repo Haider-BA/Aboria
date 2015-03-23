@@ -246,16 +246,23 @@ struct DataVectorExpr
 ////}
 		template<int I, typename ParticlesType>
 		struct DataVectorSymbolic
-				: DataVectorExpr< proto::terminal<typename DataVector<I,ParticlesType> >::type >
-				{
-					explicit DataVectorSymbolic(ParticlesType &particles):
-								DataVector<I,ParticlesType>(particles) {};
-
+					: DataVectorExpr<proto::terminal<DataVector<I,ParticlesType> >::type> {
+//				    typedef typename proto::terminal<DataVector<I,ParticlesType> >::type tmp_type1;
+//				    typedef typename DataVectorSymbolic<I,ParticlesType> tmp_type2;
+//					BOOST_PROTO_EXTENDS(tmp_type1,
+//							tmp_type2,
+//							DataVectorDomain)
 
 					// Here we override operator [] to give read/write access to
 					// the elements of the array. (We could use the TArrayExpr
 					// operator [] if we made the subscript context smarter about
 					// returning non-const reference when appropriate.)
+						// An expression extension is constructed from the expression
+						    // it is extending.
+					explicit DataVectorSymbolic(ParticlesType& p)
+						      : proto::value(*this)(p)
+						    {}
+
 					typename Elem<I, ParticlesType>::type &operator [](std::ptrdiff_t i)
 					{
 						return proto::value(*this)[i];
@@ -266,18 +273,9 @@ struct DataVectorExpr
 						return proto::value(*this)[i];
 					}
 
-					// Here we define a operator = for TArray terminals that
-					// takes a TArray expression.
+
 					template< typename Expr >
-					DataVectorSymbolic &operator =(Expr const & expr)
-					{						// expr[i] here uses TArraySubscriptCtx under the covers.
-						(*this)[0] = expr[0];
-						(*this)[1] = expr[1];
-						(*this)[2] = expr[2];
-						return *this;
-						// proto::as_expr<TArrayDomain>(expr) is the same as
-						// expr unless expr is an integer, in which case it
-						// is made into a TArrayExpr terminal first.
+					DataVectorSymbolic &operator =(Expr const & expr) {
 						return this->assign(proto::as_expr<DataVectorDomain>(expr));
 					}
 
@@ -286,15 +284,19 @@ struct DataVectorExpr
 					template< typename Expr >
 					DataVectorSymbolic &assign(Expr const & expr)
 					{
-						DataVectorSameCtx const same(&(arr.get_particles()));
+						DataVectorSameCtx const same(&(proto::value(*this).get_particles()));
 						proto::eval(expr, same); // will throw if the particles don't match
-						for(std::size_t i = 0; i < arr.size(); ++i) {
-							(*this)[i] += expr[i];
+						for(std::size_t i = 0; i < proto::value(*this).size(); ++i) {
+							proto::value(*this)[i] += expr[i];
 						}
 						return *this;
 					}
-				};
+		};
 
+		template< int I, typename ParticlesType>
+		DataVectorSymbolic<I,ParticlesType> get_vector(ParticlesType &p) {
+			return DataVector<I,ParticlesType>(p);
+		}
 
 }
 

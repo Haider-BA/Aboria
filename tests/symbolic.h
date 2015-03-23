@@ -58,23 +58,23 @@ public:
     	auto id = get_vector<ID>(particles);
     	auto alive = get_vector<ALIVE>(particles);
 
-    	Aboria::assign(theDouble, 0);
+    	theDouble = 0;
 
     	ParticlesType::value_type p;
     	particles.push_back(p);
     	particles.push_back(p);
 
-    	Aboria::assign(theDouble, 0);
+    	theDouble = 0;
 
     	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),0);
     	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),0);
 
-    	Aboria::assign(theDouble, 1);
+    	theDouble = 1;
 
     	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),1);
     	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),1);
 
-    	Aboria::assign(position, Vect3d(1,2,3));
+    	position = Vect3d(1,2,3);
 
     	TS_ASSERT_EQUALS(particles[0].get_position()[0],1);
     	TS_ASSERT_EQUALS(particles[0].get_position()[1],2);

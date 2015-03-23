@@ -15,17 +15,20 @@ namespace Aboria {
 template<typename ParticlesType>
 class DataVectorBase {
 public:
-	DataVectorBase(ParticlesType &particles):
+	DataVectorBase():
 		particles(particles)
 	{};
-	ParticlesType &get_particles() {
+	void set_particles(Particles *p) {
+		particles = p;
+	}
+	ParticlesType *get_particles() {
 		return particles;
 	}
 	std::size_t size() {
-		return particles.size();
+		return particles->size();
 	}
 protected:
-	ParticlesType &particles;
+	ParticlesType *particles;
 };
 
 template<int I, typename ParticlesType>
@@ -77,10 +80,7 @@ public:
 };
 
 
-template< int I, typename ParticlesType>
-DataVector<I,ParticlesType> get_vector(ParticlesType &p) {
-	return DataVector<I,ParticlesType>(p);
-}
+
 
 }
 #endif /* DATAVECTOR_H_ */
