@@ -160,11 +160,14 @@ public:
 			std::get<I>(data) = arg;
 		}
 
-		const size_t get_index() {
+		size_t get_index() {
 			return index;
 		}
 		bool get_alive() const {
 			return alive;
+		}
+		void set_alive(bool aliveIn) const {
+			alive = aliveIn;
 		}
 		generator_type get_generator() {
 			return generator;
@@ -506,6 +509,13 @@ public:
 		std::for_each(begin(),end(),[&f](value_type& i) {
 			i.r = f(i);
 		});
+		if (searchable) {
+			enforce_domain(neighbour_search.get_low(),neighbour_search.get_high(),neighbour_search.get_periodic());
+			neighbour_search.embed_points(data.cbegin(),data.cend());
+		}
+	}
+
+	void update_positions() {
 		if (searchable) {
 			enforce_domain(neighbour_search.get_low(),neighbour_search.get_high(),neighbour_search.get_periodic());
 			neighbour_search.embed_points(data.cbegin(),data.cend());

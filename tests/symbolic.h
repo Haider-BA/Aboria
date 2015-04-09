@@ -74,11 +74,22 @@ public:
     	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),1);
     	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),1);
 
+    	theDouble = theDouble + 1;
+
+    	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),2);
+    	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),2);
+
     	position = Vect3d(1,2,3);
 
     	TS_ASSERT_EQUALS(particles[0].get_position()[0],1);
     	TS_ASSERT_EQUALS(particles[0].get_position()[1],2);
     	TS_ASSERT_EQUALS(particles[0].get_position()[2],3);
+
+    	position = position * theDouble;
+
+    	TS_ASSERT_EQUALS(particles[0].get_position()[0],2);
+    	TS_ASSERT_EQUALS(particles[0].get_position()[1],4);
+    	TS_ASSERT_EQUALS(particles[0].get_position()[2],6);
     }
 
 };
