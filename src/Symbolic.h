@@ -30,10 +30,13 @@
 #include <boost/mpl/bool.hpp>
 #include <boost/proto/core.hpp>
 #include <boost/proto/context.hpp>
+#include <boost/proto/traits.hpp>
+#include <boost/utility/enable_if.hpp>
 namespace mpl = boost::mpl;
 namespace proto = boost::proto;
 using proto::_;
 using proto::N;
+
 namespace Aboria {
 
 template<typename Expr>
@@ -47,82 +50,34 @@ struct DataVectorSubscriptCtx
       : i_(i)
     {}
 
-    // Use default_eval for all the operations ...
-    template<typename Expr, typename Tag = typename Expr::proto_tag>
-    struct eval
-      : proto::default_eval<Expr, DataVectorSubscriptCtx>
-    {};
+	template<
+	        typename Expr
+	        // defaulted template parameters, so we can
+	        // specialize on the expressions that need
+	        // special handling.
+	      , typename Tag = typename proto::tag_of<Expr>::type
+	      , typename Arg0 = typename Expr::proto_child0
+	    >
+	struct eval: proto::default_eval<Expr, DataVectorSubscriptCtx const>
+						{};
 
-    // ... except for terminals, which we index with our subscript
-    template<typename Expr>
-    struct eval<Expr, proto::tag::terminal>
-    {
-        typedef const typename proto::result_of::value<Expr>::type::value_type& result_type;
 
-        result_type operator ()( Expr const & expr, DataVectorSubscriptCtx & ctx ) const
-        {
-            return proto::value( expr )[ ctx.i_ ];
-        }
-    };
+
+			// Handle vector terminals here...
+			template<typename Expr, int I, typename ParticlesType>
+			struct eval<Expr, proto::tag::terminal, DataVector<I,ParticlesType> >
+			{
+				typedef typename proto::result_of::value<Expr>::type::value_type result_type;
+
+				result_type operator ()(Expr &expr, DataVectorSubscriptCtx const &ctx) const
+				{
+					return proto::value(expr)[ctx.i_];
+				}
+	};
+
     const int i_;
 };
 
-//// Here is an evaluation context that indexes into a Vec3
-//// expression, and combines the result.
-//struct DataVectorSubscriptCtx
-//  : proto::callable_context< DataVectorSubscriptCtx const >
-//{
-//    typedef const typename Elem<I, DataType>::type& result_type;
-//
-//    DataVectorSubscriptCtx(int i)
-//      : i_(i)
-//    {}
-//
-//    // Index array terminals with our subscript. Everything
-//    // else will be handled by the default evaluation context.
-//    template<int I, typename DataType>
-//    const typename Elem<I, DataType>::type& operator ()(proto::tag::terminal, const DataVector<I,DataType> &arr) const
-//    {
-//        return arr[this->i_];
-//    }
-//
-//    int i_;
-//};
-
-//// Here is an evaluation context that indexes into a DataVector
-//// expression and combines the result.
-//struct DataVectorSubscriptCtx
-//{
-//    DataVectorSubscriptCtx(std::size_t i)
-//      : i_(i)
-//    {}
-//
-//    // Unless this is a DataVector terminal, use the
-//    // default evaluation context
-//    template<typename Expr, typename EnableIf = void>
-//    struct eval
-//      : proto::default_eval<Expr, DataVectorSubscriptCtx const>
-//    {};
-//
-//    // Index DataVector terminals with our subscript.
-//    template<typename Expr>
-//    struct eval<
-//        Expr
-//      , typename boost::enable_if<
-//            proto::matches<Expr, proto::terminal<DataVector<N, _> > >
-//        >::type
-//    >
-//    {
-//        typedef typename proto::result_of::value<Expr>::type::value_type result_type;
-//
-//        result_type operator ()(Expr &expr, DataVectorSubscriptCtx const &ctx) const
-//        {
-//            return proto::value(expr)[ctx.i_];
-//        }
-//    };
-//
-//    std::size_t i_;
-//};
 
 
   struct DataVectorSameCtx
@@ -145,50 +100,10 @@ struct DataVectorSubscriptCtx
 			  void *particles;
 		  };
 
-//// Here is an evaluation context that verifies that all the
-//// DataVectors in an expression have the same particle datastructure.
-//struct DataVectorSameCtx
-//{
-//	DataVectorSameCtx(void *particles)
-//      : particles(particles)
-//    {}
-//
-//    // Unless this is a DataVector terminal, use the
-//    // null evaluation context
-//    template<typename Expr, typename EnableIf = void>
-//    struct eval
-//      : proto::null_eval<Expr, DataVintectorSameCtx const>
-//    {};
-//
-//    // Index array terminals with our subscript. Everything
-//    // else will be handled by the default evaluation context.
-//    template<typename Expr>
-//    struct eval<
-//        Expr
-//      , typename boost::enable_if<
-//            proto::matches<Expr, proto::terminal<DataVector<N, _> > >
-//        >::type
-//    >
-//    {
-//        typedef void result_type;
-//
-//        result_type operator ()(Expr &expr, DataVectorSameCtx const &ctx) const
-//        {
-//            if(ctx.particles != proto::value(expr).get_particles())
-//            {
-//                throw std::runtime_error("LHS and RHS are not compatible");
-//            }
-//        }
-//    };
-//
-//    void *particles;
-//};
 
 
-
-// This grammar describes which TArray expressions
-// are allowed; namely, int and array terminalsusing namespace DataVectorOps
-// plus, minus, multiplies and divides of TArray expressions.
+// This grammar describes which DataVector expressions
+// are allowed;
 struct DataVectorGrammar
 		: proto::or_<
 		  proto::terminal<_>
@@ -238,15 +153,6 @@ struct DataVectorSymbolic
 	: DataVectorExpr<expr_type>( expr_type::make( DataVector<I,ParticlesType>(p) ) )
 	  {}
 
-	typename Elem<I, ParticlesType>::type &operator [](std::ptrdiff_t i)
-	{
-		return proto::value(*this)[i];
-	}
-
-	typename Elem<ID, ParticlesType>::type const &operator [](std::ptrdiff_t i) const
-	{
-		return proto::value(*this)[i];
-	}
 
 	template< typename Expr >
 	DataVectorSymbolic &operator =(Expr const & expr) {
@@ -268,26 +174,16 @@ private:
 };
 
 
-	template<typename ParticlesType>
-		struct DataVectorSymbolic<ID,ParticlesType>
-			: DataVectorExpr<typename proto::terminal<DataVector<ID,ParticlesType> >::type> {
+template<typename ParticlesType>
+	struct DataVectorSymbolic<ID,ParticlesType>
+		: DataVectorExpr<typename proto::terminal<DataVector<ID,ParticlesType> >::type> {
 
-			typedef typename proto::terminal<DataVector<ID,ParticlesType> >::type expr_type;
+		typedef typename proto::terminal<DataVector<ID,ParticlesType> >::type expr_type;
 
-			explicit DataVectorSymbolic(ParticlesType& p)
-			: DataVectorExpr<expr_type>( expr_type::make( DataVector<ID,ParticlesType>(p) ) )
-			  {}
-
-			typename Elem<ID, ParticlesType>::type &operator [](std::ptrdiff_t i)
-			{
-				return proto::value(*this)[i];
-			}
-
-			typename Elem<ID, ParticlesType>::type const &operator [](std::ptrdiff_t i) const
-			{
-				return proto::value(*this)[i];
-			}
-	};
+		explicit DataVectorSymbolic(ParticlesType& p)
+		: DataVectorExpr<expr_type>( expr_type::make( DataVector<ID,ParticlesType>(p) ) )
+		  {}
+};
 
 
 template< int I, typename ParticlesType>

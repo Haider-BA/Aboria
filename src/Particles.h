@@ -383,6 +383,7 @@ public:
 	}
 
 
+
 	void push_back (const value_type& val) {
 		data.push_back(val);
 		if (searchable) neighbour_search.update_begin_and_end(data.cbegin(),data.cend());
@@ -396,6 +397,10 @@ public:
 		i->index = index;
 		if (track_ids) id_to_index[i->id] = index;
 		if (searchable) neighbour_search.add_point(i);
+	}
+
+	void push_back(const Vect3d& position) {
+		this->push_back(value_type(position));
 	}
 
 	void pop_back() {

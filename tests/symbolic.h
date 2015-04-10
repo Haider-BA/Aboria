@@ -90,7 +90,51 @@ public:
     	TS_ASSERT_EQUALS(particles[0].get_position()[0],2);
     	TS_ASSERT_EQUALS(particles[0].get_position()[1],4);
     	TS_ASSERT_EQUALS(particles[0].get_position()[2],6);
+
+       	position = if_else(id == 0, Vect3d(0,0,0), Vect3d(3,2,1));
+
+       	TS_ASSERT_EQUALS(particles[0].get_position()[0],0);
+       	TS_ASSERT_EQUALS(particles[0].get_position()[1],0);
+       	TS_ASSERT_EQUALS(particles[0].get_position()[2],0);
+
+       	TS_ASSERT_EQUALS(particles[1].get_position()[0],3);
+       	TS_ASSERT_EQUALS(particles[1].get_position()[1],2);
+       	TS_ASSERT_EQUALS(particles[1].get_position()[2],1);
+
+
     }
+
+    void test_neighbours(void) {
+       	typedef Particles<std::tuple<double> > ParticlesType;
+       	ParticlesType particles;
+
+//       	Vect3d min(-1,-1,-1);
+//       	Vect3d max(1,1,1);
+//       	Vect3d periodic(true,true,true);
+       	double diameter = 0.1;
+//       	particles.init_neighbour_search(min,max,diameter,periodic);
+
+       	auto theDouble = get_vector<0>(particles);
+       	auto position = get_vector<POSITION>(particles);
+       	auto id = get_vector<ID>(particles);
+       	auto alive = get_vector<ALIVE>(particles);
+
+       	particles.push_back(Vect3d(0,0,0));
+       	particles.push_back(Vect3d(diameter*2,0,0));
+
+       	theDouble = sum(particles, radius < diameter, 1);
+
+       	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),1);
+       	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),1);
+
+       	position = if_else(id == 0, Vect3d(0,0,0), Vect3d(diameter/2.0,0,0));
+
+       	theDouble = sum(particles, radius < diameter, 1);
+
+       	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),2);
+       	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),2);
+
+       }
 
 };
 
