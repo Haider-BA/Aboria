@@ -44,10 +44,11 @@ struct DataVectorExpr;
 
 // Here is an evaluation context that indexes into a lazy vector
 // expression, and combines the result.
+template<typename ParticlesType>
 struct DataVectorSubscriptCtx
 {
-	DataVectorSubscriptCtx(size_t i)
-      : i_(i)
+	DataVectorSubscriptCtx(size_t i, const ParticlesType& particles)
+      : i_(i),particles_(particles)
     {}
 
 	template<
@@ -75,7 +76,29 @@ struct DataVectorSubscriptCtx
 				}
 	};
 
+			// Handle sums here...
+			template<typename Expr, typename Arg0>
+			struct eval<Expr, tag::sum, Arg0 >
+			{
+				typedef typename proto::result_of::value<Expr>::type::value_type result_type;
+
+				result_type operator ()(Expr &expr, DataVectorSubscriptCtx const &ctx) const
+				{
+					auto particlesb = proto::child<0>(expr);
+					auto conditional = proto::child<1>(expr);
+					auto arg = proto::child<2>(expr);
+					double sum = 0;
+					for (auto i: particlesb.find_neighbours(particles_[ctx.i_].get_position())) {
+						if (conditional.eval_particle(i)) {
+							sum += arg.eval_particle(i);
+						}
+					}
+					return sum;
+				}
+				};
+
     const int i_;
+    const ParticlesType& particles_;
 };
 
 
@@ -114,6 +137,39 @@ struct DataVectorGrammar
 		>
 		{};
 
+	template<typename PARTICLES, typename CONDITIONAL, typename ARG>
+		  typename proto::result_of::make_expr<
+			proto::tag::function,
+			sum_fun,        // First child (by value)
+			PARTICLES const &,
+			CONDITIONAL const &,
+			ARG const &
+		  >::type const
+		  sum(PARTICLES const & particles, CONDITIONAL const & conditional, ARG const & arg)
+	{
+		return proto::make_expr<proto::tag::function>(
+				sum_fun()    // First child (by value)
+				, boost::ref(particles)   // Second child (by reference)
+				, boost::ref(conditional)
+				, boost::ref(arg)
+		);
+	}
+		// Define a lazy pow() function for the calculator EDSL.
+		// Can be used as: pow< 2 >(_1)
+		template< int Exp, typename Arg >
+		typename proto::result_of::make_expr<
+		    proto::tag::function  // Tag type
+		  , sum_fun< Exp >        // First child (by value)
+		  , Arg const &           // Second child (by reference)
+		>::type const
+		pow(Arg const &arg)
+		{
+		    return proto::make_expr<proto::tag::function>(
+		        pow_fun<Exp>()    // First child (by value)
+		      , boost::ref(arg)   // Second child (by reference)
+		    );
+		}
+
 
 
 // Tell proto how to generate expressions in the DataVectorDomain
@@ -134,10 +190,11 @@ struct DataVectorExpr
 
 			// Use the DataVectorSubscriptCtx to implement subscripting
 			// of a DataVector expression tree.
+			template<typename ParticleType>
 			typename proto::result_of::eval<Expr const, DataVectorSubscriptCtx const>::type
-			operator []( std::size_t i ) const
+			eval_particle_index( std::size_t i , const ParticleType& particles) const
 			{
-				DataVectorSubscriptCtx ctx(i);
+				DataVectorSubscriptCtx<ParticleType> ctx(i, particles);
 				return proto::eval(*this, ctx);
 			}
 };
@@ -167,7 +224,7 @@ private:
 		DataVectorSameCtx same(&(proto::value(*this).get_particles()));
 		proto::eval(expr, same); // will throw if the particles don't match
 		for(std::size_t i = 0; i < proto::value(*this).size(); ++i) {
-			proto::value(*this).set(i,expr[i]);
+			proto::value(*this).set(i,expr.eval_particle_index(i,proto::value(*this).get_particles()));
 		}
 		return *this;
 	}
