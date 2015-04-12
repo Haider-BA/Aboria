@@ -758,6 +758,42 @@ private:
 };
 
 
+template<int I,typename ParticlesType>
+const Elem<I,ParticlesType>::type& get (ParticlesType::value_type &arg) {
+	return arg.get_elem<I>();
+}
+
+template<typename ParticlesType>
+const Elem<POSITION,ParticlesType>::type& get<POSITION,ParticlesType> (ParticlesType::value_type &arg) {
+	return arg.get_position();
+}
+
+template<typename ParticlesType>
+const Elem<ID,ParticlesType>::type& get<ID,ParticlesType> (ParticlesType::value_type &arg) {
+	return arg.get_id();
+}
+
+template<typename ParticlesType>
+const Elem<ALIVE,ParticlesType>::type& get<ALIVE,ParticlesType> (ParticlesType::value_type &arg) {
+	return arg.get_alive();
+}
+
+template<int I,typename ParticlesType>
+void set (ParticlesType::value_type &arg, const Elem<I,ParticlesType>::type& data) {
+	return arg.set_elem<I>(data);
+}
+
+template<typename ParticlesType>
+void set<POSITION,ParticlesType> (ParticlesType::value_type &arg, const Elem<POSITION,ParticlesType>::type& data) {
+	return arg.set_position(data);
+}
+
+template<typename ParticlesType>
+void set<ALIVE,ParticlesType> (ParticlesType::value_type &arg, const Elem<ALIVE,ParticlesType>::type& data) {
+	return arg.set_alive(data);
+}
+
+
 
 }
 
