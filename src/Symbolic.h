@@ -32,71 +32,200 @@
 #include <boost/proto/context.hpp>
 #include <boost/proto/traits.hpp>
 #include <boost/utility/enable_if.hpp>
+#include <boost/fusion/include/vector.hpp>
+#include <boost/fusion/include/as_vector.hpp>
+#include <boost/fusion/include/joint_view.hpp>
+#include <boost/fusion/include/single_view.hpp>
 namespace mpl = boost::mpl;
 namespace proto = boost::proto;
 using proto::_;
 using proto::N;
+
+namespace proto {
+
+namespace tag {
+		struct sum_;
+	}
+
+template<typename CONDITIONAL, typename ARG>
+typename proto::result_of::make_expr<
+	tag::sum_,
+	CONDITIONAL const &,
+	ARG const &
+>::type const
+sum_(CONDITIONAL const & conditional, ARG const & arg)
+{
+	return proto::make_expr<tag::sum_>(
+			boost::ref(conditional),
+		    boost::ref(arg)
+	);
+}
+
+template<typename CONDITIONAL, typename ARG>
+struct sum_ :  proto::transform< sum_<CONDITIONAL, ARG> > {
+  // types
+  typedef proto::expr< tag::sum_, proto::list2< CONDITIONAL, ARG> >       type;
+  typedef proto::basic_expr< tag::sum_, proto::list2< CONDITIONAL, ARG> > proto_grammar;
+
+  // member classes/structs/unions
+  template<typename Expr, typename State, typename Data>
+  struct impl :
+     proto::pass_through<sum_>::template impl<Expr, State, Data>
+  {
+  };
+};
+}
 
 namespace Aboria {
 
 template<typename Expr>
 struct DataVectorExpr;
 
-namespace tag {
-		struct sum;
-	}
-
-template<typename PARTICLES, typename CONDITIONAL, typename ARG>
-typename proto::result_of::make_expr<
-tag::sum,
-PARTICLES const &,
-CONDITIONAL const &,
-ARG const &
->::type const
-sum(PARTICLES const & particles, CONDITIONAL const & conditional, ARG const & arg)
-{
-	return proto::make_expr<tag::sum>(
-			sum_fun()    // First child (by value)
-			, boost::ref(particles)   // Second child (by reference)
-	, boost::ref(conditional)
-	, boost::ref(arg)
-	);
-}
-
-struct ParticlesConsistentCtx
-: proto::callable_context< ParticlesConsistentCtx, proto::null_context >
-{
-	ParticlesConsistentCtx(void *particles) {
-		particles_ptrs.push_back(particles);
-	}
-
-	typedef void result_type;
-	template<int I, typename DataType>
-	void operator ()(proto::tag::terminal, const DataVector<I,DataType> &arr)
-	{
-		DataType *this_particles_ptr = &(arr.get_particles());
-		for (void *i: particles_ptrs) {
-			if (this_particles_ptr != i) {
-				throw std::runtime_error("Expression not valid: Particles data structure " <<
-						this_particles_ptr << " not in list of valid pointers");
-			}
-		}
-	}
-
-	template<int I, typename DataType>
-	void operator ()(tag::sum, const DataVector<I,DataType> &arr)
-	{
-		DataType *this_particles_ptr = &(arr.get_particles());
-		for (void *i: particles_ptrs) {
-			if (this_particles_ptr != i) {
-				throw std::runtime_error("Expression not valid: Particles data structure " <<
-						this_particles_ptr << " not in list of valid pointers");
-			}
-		}
-	}
-
-	std::vector<void *> particles_ptrs;
+struct null_ptr {
 };
+
+template<typename Value>
+struct get_particles_ptr : proto::callable
+{
+
+	typedef null_ptr result_type;
+
+	result_type operator ()(const Value& arg)
+	{
+		return null_ptr();
+	}
+};
+
+template<int I, typename DataType>
+struct get_particles_ptr<DataVector<I, DataType> > : proto::callable
+{
+
+	typedef DataVector<I, DataType> *result_type;
+
+	result_type operator ()(const DataVector<I,DataType> &arr)
+	{
+		return &(arr.get_particles());
+	}
+};
+
+template<typename State>
+struct particles_ptr_accumulate : proto::callable
+{
+	typedef State result_type;
+
+	template<typename ToAdd>
+	result_type operator ()(result_type existing, ToAdd to_add) {
+		return to_add;
+	}
+};
+
+template<int I, typename DataType>
+struct particles_ptr_accumulate<DataVector<I, DataType> *> : proto::callable
+{
+	typedef DataVector<I, DataType> * result_type;
+
+	result_type operator ()(result_type existing, result_type to_add) {
+		if (to_add != NULL) {
+			if (existing != to_add) {
+				throw std::runtime_error("Expression not valid: conflicting Particles data structures");
+			}
+			return to_add;
+		}
+		return existing;
+	}
+};
+
+// A grammar which matches all the assignment operators,
+// so we can easily disable them.
+struct AssignOps
+  : proto::switch_<struct AssignOpsCases>
+{};
+
+// Here are the cases used by the switch_ above.
+struct AssignOpsCases
+{
+    template<typename Tag, int D = 0> struct case_  : proto::not_<_> {};
+
+    template<int D> struct case_< proto::tag::plus_assign, D >         : _ {};
+    template<int D> struct case_< proto::tag::minus_assign, D >        : _ {};
+    template<int D> struct case_< proto::tag::multiplies_assign, D >   : _ {};
+    template<int D> struct case_< proto::tag::divides_assign, D >      : _ {};
+    template<int D> struct case_< proto::tag::modulus_assign, D >      : _ {};
+    template<int D> struct case_< proto::tag::shift_left_assign, D >   : _ {};
+    template<int D> struct case_< proto::tag::shift_right_assign, D >  : _ {};
+    template<int D> struct case_< proto::tag::bitwise_and_assign, D >  : _ {};
+    template<int D> struct case_< proto::tag::bitwise_or_assign, D >   : _ {};
+    template<int D> struct case_< proto::tag::bitwise_xor_assign, D >  : _ {};
+};
+
+
+// This grammar describes which DataVector expressions
+// are allowed;
+struct DataVectorGrammar
+  : proto::or_<
+  	  proto::when<proto::terminal, get_particles_ptr<proto::_value>(proto::_value)>
+  	  , proto::when<proto::sum_<DataVectorGrammar,DataVectorGrammar>, null_ptr()>
+  	  , proto::when<proto::and_<
+              	  	  proto::nary_expr<_, proto::vararg<DataVectorGrammar> >
+            		, proto::not_<AssignOps> >
+  	  	  	  	  	, proto::fold<_, void *(), particles_ptr_accumulate<proto::_state>(get_particles_ptrs, proto::_state) > >
+    >
+{};
+
+
+//struct DataVectorGrammar
+//		: proto::or_<
+//
+//		  // DataVectorTerminals return their value
+//		  proto::when< proto::terminal< DataVector<_,_> >
+//				, fusion::single_view<proto::_value>(proto::_value) >
+//
+//		  // Any other terminals return nothing ...
+//		  , proto::when< proto::terminal<_>
+//				, fusion::nil() >
+//
+//		  // For any non-terminals, concat all children values
+//		  , proto::when< proto::nary_expr<_, proto::vararg<_> >
+//		  	  , proto::fold<_, fusion::nil()
+//					, fusion::joint_view<DataVectorGrammer,boost::add_const<proto::_state> > (DataVectorGrammer, proto::_state)
+//					>
+//		>
+//		{};
+
+//struct ParticlesConsistentCtx
+//: proto::callable_context< ParticlesConsistentCtx, proto::null_context >
+//{
+//	ParticlesConsistentCtx(void *particles) {
+//		particles_ptrs.push_back(particles);
+//	}
+//
+//	typedef void * result_type;
+//	template<int I, typename DataType>
+//	void operator ()(proto::tag::terminal, const DataVector<I,DataType> &arr)
+//	{
+//		DataType *this_particles_ptr = &(arr.get_particles());
+//		for (void *i: particles_ptrs) {
+//			if (this_particles_ptr != i) {
+//				throw std::runtime_error("Expression not valid: Particles data structure " <<
+//						this_particles_ptr << " not in list of valid pointers");
+//			}
+//		}
+//	}
+//
+//	template<typename Expr>
+//	void operator ()(tag::sum, Expr arr)
+//	{
+//		DataType *this_particles_ptr = &(arr.get_particles());
+//		for (void *i: particles_ptrs) {
+//			if (this_particles_ptr != i) {
+//				throw std::runtime_error("Expression not valid: Particles data structure " <<
+//						this_particles_ptr << " not in list of valid pointers");
+//			}
+//		}
+//	}
+//
+//	void *particles_ptr;
+//};
 
 
 // Here is an evaluation context that indexes into a lazy vector
@@ -135,12 +264,13 @@ struct ParticleCtx
 
 			// Handle sums here...
 			template<typename Expr, typename Arg0>
-			struct eval<Expr, tag::sum, Arg0 >
+			struct eval<Expr, proto::tag::sum_, Arg0 >
 			{
 				typedef typename proto::result_of::child<2,Expr>::type result_type;
 
 				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
 				{
+
 					auto particlesb = proto::child<0>(expr);
 					auto conditional = proto::child<1>(expr);
 					auto arg = proto::child<2>(expr);
@@ -173,10 +303,6 @@ struct DataVectorGrammar
 		, proto::divides< DataVectorGrammar, DataVectorGrammar >
 		>
 		{};
-
-
-
-
 
 
 
