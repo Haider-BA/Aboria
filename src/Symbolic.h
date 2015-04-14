@@ -28,14 +28,16 @@
 #include "DataVector.h"
 
 #include <boost/mpl/bool.hpp>
+#include <boost/mpl/assert.hpp>
 #include <boost/proto/core.hpp>
 #include <boost/proto/context.hpp>
 #include <boost/proto/traits.hpp>
 #include <boost/utility/enable_if.hpp>
-#include <boost/fusion/include/vector.hpp>
-#include <boost/fusion/include/as_vector.hpp>
-#include <boost/fusion/include/joint_view.hpp>
-#include <boost/fusion/include/single_view.hpp>
+//#include <boost/fusion/include/vector.hpp>
+//#include <boost/fusion/include/as_vector.hpp>
+//#include <boost/fusion/include/joint_view.hpp>
+//#include <boost/fusion/include/single_view.hpp>
+
 namespace mpl = boost::mpl;
 namespace proto = boost::proto;
 using proto::_;
@@ -47,25 +49,27 @@ namespace tag {
 		struct sum_;
 	}
 
-template<typename CONDITIONAL, typename ARG>
+template<typename ParticleType, typename CONDITIONAL, typename ARG>
 typename proto::result_of::make_expr<
 	tag::sum_,
+	ParticleType const &,
 	CONDITIONAL const &,
 	ARG const &
 >::type const
-sum_(CONDITIONAL const & conditional, ARG const & arg)
+sum_(ParticleType const & particles,CONDITIONAL const & conditional, ARG const & arg)
 {
 	return proto::make_expr<tag::sum_>(
+			particles,
 			boost::ref(conditional),
 		    boost::ref(arg)
 	);
 }
 
-template<typename CONDITIONAL, typename ARG>
-struct sum_ :  proto::transform< sum_<CONDITIONAL, ARG> > {
+template<typename ParticleType, typename CONDITIONAL, typename ARG>
+struct sum_ :  proto::transform< sum_<ParticleType, CONDITIONAL, ARG> > {
   // types
-  typedef proto::expr< tag::sum_, proto::list2< CONDITIONAL, ARG> >       type;
-  typedef proto::basic_expr< tag::sum_, proto::list2< CONDITIONAL, ARG> > proto_grammar;
+  typedef proto::expr< tag::sum_, proto::list3< ParticleType, CONDITIONAL, ARG> >       type;
+  typedef proto::basic_expr< tag::sum_, proto::list3< ParticleType, CONDITIONAL, ARG> > proto_grammar;
 
   // member classes/structs/unions
   template<typename Expr, typename State, typename Data>
@@ -81,55 +85,72 @@ namespace Aboria {
 template<typename Expr>
 struct DataVectorExpr;
 
-struct null_ptr {
+struct null {
 };
 
 template<typename Value>
-struct get_particles_ptr : proto::callable
+struct get_particles_ref : proto::callable
 {
 
-	typedef null_ptr result_type;
+	typedef null result_type;
 
 	result_type operator ()(const Value& arg)
 	{
-		return null_ptr();
+		return null();
 	}
 };
 
 template<int I, typename DataType>
-struct get_particles_ptr<DataVector<I, DataType> > : proto::callable
+struct get_particles_ref<DataVector<I, DataType> > : proto::callable
 {
 
-	typedef DataVector<I, DataType> *result_type;
+	typedef const DataType &result_type;
 
 	result_type operator ()(const DataVector<I,DataType> &arr)
 	{
-		return &(arr.get_particles());
+		return arr.get_particles();
 	}
 };
 
-template<typename State>
-struct particles_ptr_accumulate : proto::callable
+template<typename ToAdd, typename Existing>
+struct particles_ref_accumulate : proto::callable
 {
-	typedef State result_type;
+	typedef null result_type;
 
-	template<typename ToAdd>
-	result_type operator ()(result_type existing, ToAdd to_add) {
+	result_type operator ()(ToAdd to_add, Existing existing) {
+		return null;
+	}
+};
+
+template<typename ToAdd>
+struct particles_ref_accumulate<ToAdd,null> : proto::callable
+{
+	typedef ToAdd result_type;
+
+	result_type operator ()(ToAdd to_add, null to_add) {
 		return to_add;
 	}
 };
 
-template<int I, typename DataType>
-struct particles_ptr_accumulate<DataVector<I, DataType> *> : proto::callable
+template<typename Existing>
+struct particles_ref_accumulate<null,Existing> : proto::callable
 {
-	typedef DataVector<I, DataType> * result_type;
+	typedef Existing result_type;
 
-	result_type operator ()(result_type existing, result_type to_add) {
-		if (to_add != NULL) {
-			if (existing != to_add) {
-				throw std::runtime_error("Expression not valid: conflicting Particles data structures");
-			}
-			return to_add;
+	result_type operator ()(null to_add, Existing existing) {
+		return existing;
+	}
+};
+
+template<typename DataType1, typename DataType2>
+struct particles_ref_accumulate<DataType1,DataType2> : proto::callable
+{
+	typedef DataType1 result_type;
+
+	result_type operator ()(DataType1 existing, DataType2 to_add) {
+		BOOST_MPL_ASSERT(( boost::is_same< DataType1,DataType2 > ));
+		if (existing != to_add) {
+			throw std::runtime_error("Expression not valid: conflicting Particles data structures");
 		}
 		return existing;
 	}
@@ -161,15 +182,27 @@ struct AssignOpsCases
 
 // This grammar describes which DataVector expressions
 // are allowed;
+//struct DataVectorGrammar
+//  : proto::or_<
+//  	  proto::when<proto::terminal, get_particles_ref<proto::_value>(proto::_value)>
+//  	  , proto::when<proto::sum_<DataVectorGrammar,DataVectorGrammar>, null()>
+//  	  , proto::when<proto::and_<
+//              	  	  proto::nary_expr<_, proto::vararg<DataVectorGrammar> >
+//            		, proto::not_<AssignOps> >
+//  	  	  	  	  	, proto::fold<_, void *(), particles_ref_accumulate<get_particles_ptrs,proto::_state>(get_particles_ptrs, proto::_state) > >
+//    >
+//{};
+
+// This grammar describes which DataVector expressions
+// are allowed;
 struct DataVectorGrammar
   : proto::or_<
-  	  proto::when<proto::terminal, get_particles_ptr<proto::_value>(proto::_value)>
-  	  , proto::when<proto::sum_<DataVectorGrammar,DataVectorGrammar>, null_ptr()>
-  	  , proto::when<proto::and_<
+  	  proto::terminal
+  	  , proto::and_<
               	  	  proto::nary_expr<_, proto::vararg<DataVectorGrammar> >
-            		, proto::not_<AssignOps> >
-  	  	  	  	  	, proto::fold<_, void *(), particles_ptr_accumulate<proto::_state>(get_particles_ptrs, proto::_state) > >
-    >
+            		, proto::not_<AssignOps>
+  	  	  	  	   >
+
 {};
 
 
@@ -183,6 +216,8 @@ struct DataVectorGrammar
 //		  // Any other terminals return nothing ...
 //		  , proto::when< proto::terminal<_>
 //				, fusion::nil() >
+//
+//		  , proto::when<proto::sum_<DataVectorGrammar,DataVectorGrammar>, fusion::nil()>
 //
 //		  // For any non-terminals, concat all children values
 //		  , proto::when< proto::nary_expr<_, proto::vararg<_> >
@@ -227,6 +262,45 @@ struct DataVectorGrammar
 //	void *particles_ptr;
 //};
 
+		// Here is an evaluation context that indexes into a lazy vector
+		// expression, and combines the result.
+		template<typename ParticlesType1, typename ParticlesType2>
+		struct TwoParticleCtx
+		{
+			TwoParticleCtx(const ParticlesType1::value_type& particle1, const ParticlesType1::value_type& particle2)
+			: particle1_(particle1),particle2_(particle2)
+			{}
+
+			template<
+			typename Expr
+			// defaulted template parameters, so we can
+			// specialize on the expressions that need
+			// special handling.
+			, typename Tag = typename proto::tag_of<Expr>::type
+			, typename Arg0 = typename Expr::proto_child0
+			>
+			struct eval: proto::default_eval<Expr, ParticleCtx const>
+			{};
+
+			// Handle vector terminals here...
+			template<typename Expr, int I, typename ParticlesType3>
+			struct eval<Expr, proto::tag::terminal, DataVector<I,ParticlesType3> >
+			{
+				typedef typename Elem<I,ParticlesType3> result_type;
+
+				BOOST_MPL_ASSERT_RELATION(( boost::is_same< ParticlesType3,ParticlesType1 > ),
+											||, (boost::is_same< ParticlesType3,ParticlesType2 >));
+
+				result_type operator ()(Expr &expr, TwoParticleCtx const &ctx) const
+				{
+					return get<I,ParticlesType3>(ctx.particle1_);
+				}
+			};
+
+			const ParticlesType1::value_type& particle1_;
+			const ParticlesType1::value_type& particle2_;
+
+		};
 
 // Here is an evaluation context that indexes into a lazy vector
 // expression, and combines the result.
@@ -251,30 +325,33 @@ struct ParticleCtx
 
 
 			// Handle vector terminals here...
-			template<typename Expr, int I, typename ParticlesType>
-			struct eval<Expr, proto::tag::terminal, DataVector<I,ParticlesType> >
+			template<typename Expr, int I, typename ParticlesType2>
+			struct eval<Expr, proto::tag::terminal, DataVector<I,ParticlesType2> >
 			{
-				typedef typename Elem<I,ParticlesType> result_type;
+				typedef typename Elem<I,ParticlesType2> result_type;
+
+				BOOST_MPL_ASSERT(( boost::is_same< ParticlesType,ParticlesType2 > ));
 
 				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
 				{
-					return get<I,ParticlesType>(ctx.particle_);
+					return get<I,ParticlesType2>(ctx.particle_);
 				}
-	};
+			};
 
 			// Handle sums here...
 			template<typename Expr, typename Arg0>
 			struct eval<Expr, proto::tag::sum_, Arg0 >
 			{
-				typedef typename proto::result_of::child<2,Expr>::type result_type;
+				typedef typename proto::result_of::eval<Expr::proto_child2 const, TwoParticleCtx const>::type result_type;
+
+				BOOST_MPL_ASSERT(( boost::is_same<typename proto::result_of::eval<Expr::proto_child1 const, TwoParticleCtx const>::type,bool > ));
 
 				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
 				{
-
-					auto particlesb = proto::child<0>(expr);
+					auto particlesb = proto::eval(proto::child<0>(expr),ctx);
 					auto conditional = proto::child<1>(expr);
 					auto arg = proto::child<2>(expr);
-					double sum = 0;
+					result_type sum = 0;
 					for (auto i: particlesb.find_neighbours(particle_.get_position())) {
 						if (conditional.eval(i,particle_)) {
 							sum += arg.eval(i,particle_);
@@ -288,21 +365,6 @@ struct ParticleCtx
 };
 
 
-
-
-
-
-// This grammar describes which DataVector expressions
-// are allowed;
-struct DataVectorGrammar
-		: proto::or_<
-		  proto::terminal<_>
-		, proto::plus< DataVectorGrammar, DataVectorGrammar >
-		, proto::minus< DataVectorGrammar, DataVectorGrammar >
-		, proto::multiplies< DataVectorGrammar, DataVectorGrammar >
-		, proto::divides< DataVectorGrammar, DataVectorGrammar >
-		>
-		{};
 
 
 
@@ -327,9 +389,17 @@ struct DataVectorExpr
 			// of a DataVector expression tree.
 			template<typename ParticleType>
 			typename proto::result_of::eval<Expr const, ParticleCtx const>::type
-			eval( const ParticleType::value_type& particle, const ParticleType& particles) const
+			eval( const ParticleType::value_type& particle) const
 			{
-				ParticleCtx<ParticleType> ctx(particle, particles);
+				ParticleCtx<ParticleType> ctx(particle);
+				return proto::eval(*this, ctx);
+			}
+
+			template<typename ParticleType1, typename ParticleType2>
+			typename proto::result_of::eval<Expr const, TwoParticleCtx const>::type
+			eval( const ParticleType1::value_type& particle1,  const ParticleType2::value_type& particle2) const
+			{
+				TwoParticleCtx<ParticleType1,ParticleType2> ctx(particle1, particle2);
 				return proto::eval(*this, ctx);
 			}
 };
