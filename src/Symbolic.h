@@ -262,13 +262,15 @@ struct DataVectorGrammar
 //	void *particles_ptr;
 //};
 
+  	    struct dx;
+
 		// Here is an evaluation context that indexes into a lazy vector
 		// expression, and combines the result.
 		template<typename ParticlesType1, typename ParticlesType2>
 		struct TwoParticleCtx
 		{
-			TwoParticleCtx(const ParticlesType1::value_type& particle1, const ParticlesType1::value_type& particle2)
-			: particle1_(particle1),particle2_(particle2)
+			TwoParticleCtx(const Vect3d& dx, const ParticlesType1::value_type& particle1, const ParticlesType1::value_type& particle2)
+			: dx_(dx),particle1_(particle1),particle2_(particle2)
 			{}
 
 			template<
@@ -283,22 +285,35 @@ struct DataVectorGrammar
 			{};
 
 			// Handle vector terminals here...
-			template<typename Expr, int I, typename ParticlesType3>
+			template<typename Expr, typename I, typename ParticlesType3>
 			struct eval<Expr, proto::tag::terminal, DataVector<I,ParticlesType3> >
 			{
-				typedef typename Elem<I,ParticlesType3> result_type;
+				typedef typename Elem<I::value,ParticlesType3> result_type;
 
-				BOOST_MPL_ASSERT_RELATION(( boost::is_same< ParticlesType3,ParticlesType1 > ),
-											||, (boost::is_same< ParticlesType3,ParticlesType2 >));
+				BOOST_MPL_ASSERT_RELATION(( boost::is_same< ParticlesType3,ParticlesType1 > )
+											,||, (boost::is_same< ParticlesType3,ParticlesType2 >));
 
 				result_type operator ()(Expr &expr, TwoParticleCtx const &ctx) const
 				{
-					return get<I,ParticlesType3>(ctx.particle1_);
+					return get<I::value,ParticlesType3>(ctx.particle1_);
+				}
+			};
+
+			// Handle dx terminals here...
+			template<typename Expr>
+			struct eval<Expr, proto::tag::terminal, dx >
+			{
+				typedef const Vect3d& result_type;
+
+				result_type operator ()(Expr &expr, TwoParticleCtx const &ctx) const
+				{
+					return ctx.dx_;
 				}
 			};
 
 			const ParticlesType1::value_type& particle1_;
 			const ParticlesType1::value_type& particle2_;
+			const Vect3d& dx_;
 
 		};
 
@@ -325,16 +340,16 @@ struct ParticleCtx
 
 
 			// Handle vector terminals here...
-			template<typename Expr, int I, typename ParticlesType2>
+			template<typename Expr, typename I, typename ParticlesType2>
 			struct eval<Expr, proto::tag::terminal, DataVector<I,ParticlesType2> >
 			{
-				typedef typename Elem<I,ParticlesType2> result_type;
+				typedef typename Elem<I::value,ParticlesType2> result_type;
 
 				BOOST_MPL_ASSERT(( boost::is_same< ParticlesType,ParticlesType2 > ));
 
 				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
 				{
-					return get<I,ParticlesType2>(ctx.particle_);
+					return get<I::value,ParticlesType2>(ctx.particle_);
 				}
 			};
 
@@ -342,19 +357,22 @@ struct ParticleCtx
 			template<typename Expr, typename Arg0>
 			struct eval<Expr, proto::tag::sum_, Arg0 >
 			{
+				typedef typename proto::result_of::eval<Expr::proto_child0 const, ParticleCtx const>::type particles_type;
+				typedef typename proto::result_of::eval<Expr::proto_child1 const, TwoParticleCtx const>::type conditional_type;
 				typedef typename proto::result_of::eval<Expr::proto_child2 const, TwoParticleCtx const>::type result_type;
 
-				BOOST_MPL_ASSERT(( boost::is_same<typename proto::result_of::eval<Expr::proto_child1 const, TwoParticleCtx const>::type,bool > ));
+				BOOST_MPL_ASSERT(( boost::is_same<conditional_type,bool > ));
 
 				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
 				{
-					auto particlesb = proto::eval(proto::child<0>(expr),ctx);
-					auto conditional = proto::child<1>(expr);
-					auto arg = proto::child<2>(expr);
+					particles_type particlesb = proto::eval(proto::child<0>(expr),ctx);
+					Expr::proto_child1 conditional = proto::child<1>(expr);
+					Expr::proto_child2 arg = proto::child<2>(expr);
 					result_type sum = 0;
 					for (auto i: particlesb.find_neighbours(particle_.get_position())) {
-						if (conditional.eval(i,particle_)) {
-							sum += arg.eval(i,particle_);
+						TwoParticleCtx ctx(i.get<1>(),i.get<0>(),particle_);
+						if (proto::eval(conditional,ctx)) {
+							sum += proto::eval(arg,ctx);
 						}
 					}
 					return sum;
@@ -397,22 +415,22 @@ struct DataVectorExpr
 
 			template<typename ParticleType1, typename ParticleType2>
 			typename proto::result_of::eval<Expr const, TwoParticleCtx const>::type
-			eval( const ParticleType1::value_type& particle1,  const ParticleType2::value_type& particle2) const
+			eval( const Vect3d& dx, const ParticleType1::value_type& particle1,  const ParticleType2::value_type& particle2) const
 			{
-				TwoParticleCtx<ParticleType1,ParticleType2> ctx(particle1, particle2);
+				TwoParticleCtx<ParticleType1,ParticleType2> ctx(dx, particle1, particle2);
 				return proto::eval(*this, ctx);
 			}
 };
 
 
-template<int I, typename ParticlesType>
+template<typename I, typename ParticlesType>
 struct DataVectorSymbolic
 	: DataVectorExpr<typename proto::terminal<DataVector<I,ParticlesType> >::type> {
 
 	typedef typename proto::terminal<DataVector<I,ParticlesType> >::type expr_type;
 
-	explicit DataVectorSymbolic(ParticlesType& p)
-	: DataVectorExpr<expr_type>( expr_type::make( DataVector<I,ParticlesType>(p) ) )
+	explicit DataVectorSymbolic(ParticlesType &p)
+	: DataVectorExpr<expr_type>( expr_type::make(DataVector<I,ParticlesType>(p)) )
 	  {}
 
 
@@ -427,31 +445,31 @@ private:
 	DataVectorSymbolic &assign(Expr const & expr)
 	{
 		ParticlesType &particles = proto::value(*this).get_particles();
-		ParticlesUnivariateCtx same(&particles);
-		proto::eval(expr, same); // will throw if the particles don't match
 		std::for_each(particles.begin(),particles.end(),[](ParticlesType::value_type& i) {
-			set<I,ParticlesType>(i,expr.eval(particles,i));
+			set<I::value,ParticlesType>(i,expr.eval(i));
 		});
 		return *this;
 	}
 };
 
-
 template<typename ParticlesType>
-	struct DataVectorSymbolic<ID,ParticlesType>
-		: DataVectorExpr<typename proto::terminal<DataVector<ID,ParticlesType> >::type> {
+struct DataVectorSymbolic<mpl::int_<ID>,ParticlesType>
+	: DataVectorExpr<typename proto::terminal<DataVectr<I,ParticlesType> >::type> {
 
-		typedef typename proto::terminal<DataVector<ID,ParticlesType> >::type expr_type;
+	typedef typename proto::terminal<DataVector<I,ParticlesType> >::type expr_type;
 
-		explicit DataVectorSymbolic(ParticlesType& p)
-		: DataVectorExpr<expr_type>( expr_type::make( DataVector<ID,ParticlesType>(p) ) )
-		  {}
+	explicit DataVectorSymbolic(ParticlesType &p)
+	: DataVectorExpr<expr_type>( expr_type::make(DataVector<mpl::int_<ID>,ParticlesType>(p)) )
+	  {}
+
+
 };
 
 
-template< int I, typename ParticlesType>
-DataVectorSymbolic<I,ParticlesType> get_vector(ParticlesType &p) {
-	return DataVectorSymbolic<I,ParticlesType>(p);
+
+template<int I, typename ParticlesType>
+DataVectorSymbolic<mpl::int_<I>,ParticlesType> get_vector(ParticlesType &p) {
+	return DataVectorSymbolic<mpl::int_<I>,ParticlesType>(p);
 }
 
 }
