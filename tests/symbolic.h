@@ -122,14 +122,14 @@ public:
        	particles.push_back(Vect3d(0,0,0));
        	particles.push_back(Vect3d(diameter*2,0,0));
 
-       	theDouble = sum(particles, radius < diameter, 1);
+       	theDouble = sum_(particles, radius < diameter, 1);
 
        	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),1);
        	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),1);
 
        	position = if_else(id == 0, Vect3d(0,0,0), Vect3d(diameter/2.0,0,0));
 
-       	theDouble = sum(particles, radius < diameter, 1);
+       	theDouble = sum_(particles, norm_(dx) < diameter, 1);
 
        	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),2);
        	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),2);

@@ -68,7 +68,7 @@ struct Elem {
 		return arg.template get_elem<I>();
 	}
 
-	static void set (ParticlesType::value_type &arg, const type& data) {
+	static void set (typename ParticlesType::value_type &arg, const type& data) {
 		return arg.template set_elem<I>(data);
 	}
 };
@@ -81,7 +81,7 @@ struct Elem<POSITION, ParticlesType> {
 		return arg.get_position();
 	}
 
-	static void set (ParticlesType::value_type &arg, const type& data) {
+	static void set (typename ParticlesType::value_type &arg, const type& data) {
 		return arg.set_position(data);
 	}
 };
@@ -104,7 +104,7 @@ struct Elem<ALIVE, ParticlesType> {
 		return arg.get_alive();
 	}
 
-	static void set (ParticlesType::value_type &arg, const type& data) {
+	static void set (typename ParticlesType::value_type &arg, const type& data) {
 		return arg.set_alive(data);
 	}
 };
