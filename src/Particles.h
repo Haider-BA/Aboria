@@ -63,21 +63,50 @@ public:
 template<int I,typename ParticlesType>
 struct Elem {
 	typedef typename std::tuple_element<I,typename ParticlesType::data_type>::type type;
+
+	static const type& get (typename ParticlesType::value_type &arg) {
+		return arg.template get_elem<I>();
+	}
+
+	static void set (ParticlesType::value_type &arg, const type& data) {
+		return arg.template set_elem<I>(data);
+	}
 };
 
 template<typename ParticlesType>
 struct Elem<POSITION, ParticlesType> {
 	typedef Vect3d type;
+
+	static const type& get (typename ParticlesType::value_type &arg) {
+		return arg.get_position();
+	}
+
+	static void set (ParticlesType::value_type &arg, const type& data) {
+		return arg.set_position(data);
+	}
 };
 
 template<typename ParticlesType>
 struct Elem<ID, ParticlesType> {
 	typedef std::size_t type;
+
+	static const type& get (typename ParticlesType::value_type &arg) {
+		return arg.get_id();
+	}
+
 };
 
 template<typename ParticlesType>
 struct Elem<ALIVE, ParticlesType> {
-	typedef std::size_t type;
+	typedef bool type;
+
+	static const type& get (typename ParticlesType::value_type &arg) {
+		return arg.get_alive();
+	}
+
+	static void set (ParticlesType::value_type &arg, const type& data) {
+		return arg.set_alive(data);
+	}
 };
 
 
@@ -757,41 +786,6 @@ private:
 #endif
 };
 
-
-template<int I,typename ParticlesType>
-const Elem<I,ParticlesType>::type& get (ParticlesType::value_type &arg) {
-	return arg.get_elem<I>();
-}
-
-template<typename ParticlesType>
-const Elem<POSITION,ParticlesType>::type& get<POSITION,ParticlesType> (ParticlesType::value_type &arg) {
-	return arg.get_position();
-}
-
-template<typename ParticlesType>
-const Elem<ID,ParticlesType>::type& get<ID,ParticlesType> (ParticlesType::value_type &arg) {
-	return arg.get_id();
-}
-
-template<typename ParticlesType>
-const Elem<ALIVE,ParticlesType>::type& get<ALIVE,ParticlesType> (ParticlesType::value_type &arg) {
-	return arg.get_alive();
-}
-
-template<int I,typename ParticlesType>
-void set (ParticlesType::value_type &arg, const Elem<I,ParticlesType>::type& data) {
-	return arg.set_elem<I>(data);
-}
-
-template<typename ParticlesType>
-void set<POSITION,ParticlesType> (ParticlesType::value_type &arg, const Elem<POSITION,ParticlesType>::type& data) {
-	return arg.set_position(data);
-}
-
-template<typename ParticlesType>
-void set<ALIVE,ParticlesType> (ParticlesType::value_type &arg, const Elem<ALIVE,ParticlesType>::type& data) {
-	return arg.set_alive(data);
-}
 
 
 
