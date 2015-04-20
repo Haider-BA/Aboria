@@ -60,60 +60,30 @@ namespace tag {
 		struct dot_;
 	}
 
-
-template<typename Arg>
-typename proto::result_of::make_expr<
-    tag::norm_  // Tag type
-  , Arg const &
->::type const
-norm_(Arg const &arg)
+template< typename Expr >
+struct norm_fun
 {
-    return proto::make_expr<tag::norm_>(
-      boost::ref(arg)
-    );
-}
+    typedef double result_type;
 
-template<typename Arg>
+    double operator()(const Vect3d& vector) const
+    {
+        return vector.norm();
+    }
+};
+
+template<typename Expr>
 typename proto::result_of::make_expr<
-    tag::squaredNorm_  // Tag type
-  , Arg const &
+proto::tag::function  // Tag type
+, norm_fun< Expr >        // First child (by value)
+, Expr const &
 >::type const
-squaredNorm_(Arg const &arg)
-{
-    return proto::make_expr<tag::squaredNorm_>(
-      boost::ref(arg)
-    );
-}
-
-template<typename Arg1, typename Arg2>
-typename proto::result_of::make_expr<
-    tag::dot_  // Tag type
-  , Arg1 const &
-  , Arg2 const &
->::type const
-dot_(Arg1 const &arg1, Arg2 const &arg2)
-{
-    return proto::make_expr<tag::dot_>(
-      boost::ref(arg1)
-    , boost::ref(arg2)
-    );
-}
-
-
-template<typename T1, typename T2, int I, typename Arg>
-typename proto::result_of::make_expr<
-    proto::tag::function  // Tag type
-  , dot_fun<T1,T2,I>        // First child (by value)
-  , Arg const &           // Second child (by reference)
->::type const
-dot_(Arg const &arg)
+norm_(Expr const &arg)
 {
     return proto::make_expr<proto::tag::function>(
-    	dot_fun<T1,T2,I>()    // First child (by value)
-      , boost::ref(arg)   // Second child (by reference)
+    	norm_fun<Expr>()    // First child (by value)
+      , boost::ref(arg)
     );
 }
-
 
 
 
@@ -127,7 +97,7 @@ typename proto::result_of::make_expr<
 sum_(ParticleType const & particles,CONDITIONAL const & conditional, ARG const & arg)
 {
 	return proto::make_expr<tag::sum_>(
-			particles,
+			boost::ref(particles),
 			boost::ref(conditional),
 		    boost::ref(arg)
 	);
@@ -319,7 +289,7 @@ struct DataVectorGrammar
 //	void *particles_ptr;
 //};
 
-  	    struct dx;
+  	    struct dx {};
 
 		// Here is an evaluation context that indexes into a lazy vector
 		// expression, and combines the result.
@@ -511,7 +481,7 @@ private:
 	{
 		ParticlesType &particles = proto::value(*this).get_particles();
 		std::for_each(particles.begin(),particles.end(),[&expr](particle_type& i) {
-			Elem<I::value,ParticlesType>::set(i,expr.eval(i));
+			Elem<I::value,ParticlesType>::set(i,expr.template eval<ParticlesType>(i));
 		});
 		return *this;
 	}
