@@ -55,53 +55,9 @@ namespace Aboria {
 
 namespace tag {
 		struct sum_;
-		struct norm_;
-		struct squaredNorm_;
-		struct dot_;
 	}
 
-template< typename Expr >
-struct norm_fun
-{
-    typedef double result_type;
 
-    double operator()(const Vect3d& vector) const
-    {
-        return vector.norm();
-    }
-};
-
-template<typename Expr>
-typename proto::result_of::make_expr<
-proto::tag::function  // Tag type
-, norm_fun< Expr >        // First child (by value)
-, Expr const &
->::type const
-norm_(Expr const &arg)
-{
-    return proto::make_expr<proto::tag::function>(
-    	norm_fun<Expr>()    // First child (by value)
-      , boost::ref(arg)
-    );
-}
-
-
-
-template<typename ParticleType, typename CONDITIONAL, typename ARG>
-typename proto::result_of::make_expr<
-	tag::sum_,
-	ParticleType const &,
-	CONDITIONAL const &,
-	ARG const &
->::type const
-sum_(ParticleType const & particles,CONDITIONAL const & conditional, ARG const & arg)
-{
-	return proto::make_expr<tag::sum_>(
-			boost::ref(particles),
-			boost::ref(conditional),
-		    boost::ref(arg)
-	);
-}
 
 
 template<typename Expr>
@@ -289,7 +245,8 @@ struct DataVectorGrammar
 //	void *particles_ptr;
 //};
 
-  	    struct dx {};
+  	    struct dx_ {};
+
 
 		// Here is an evaluation context that indexes into a lazy vector
 		// expression, and combines the result.
@@ -330,7 +287,7 @@ struct DataVectorGrammar
 
 			// Handle dx terminals here...
 			template<typename Expr>
-			struct eval<Expr, proto::tag::terminal, dx >
+			struct eval<Expr, proto::tag::terminal, dx_ >
 			{
 				typedef const Vect3d& result_type;
 
@@ -426,6 +383,51 @@ struct DataVectorDomain
 		: proto::domain<proto::generator<DataVectorExpr>, DataVectorGrammar >
 		{};
 
+	template< typename Expr >
+	struct norm_fun
+	{
+		typedef double result_type;
+
+		double operator()(const Vect3d& vector) const
+		{
+			return vector.norm();
+		}
+	};
+
+	template<typename Expr>
+	typename proto::result_of::make_expr<
+	proto::tag::function  // Tag type
+	, DataVectorDomain
+	, norm_fun< Expr >        // First child (by value)
+	, Expr const &
+	>::type const
+	norm_(Expr const &arg)
+	{
+		return proto::make_expr<proto::tag::function, DataVectorDomain>(
+				norm_fun<Expr>()    // First child (by value)
+				, boost::ref(arg)
+		);
+	}
+
+
+
+	template<typename ParticleType, typename CONDITIONAL, typename ARG>
+	typename proto::result_of::make_expr<
+	tag::sum_,
+	DataVectorDomain,
+	ParticleType const &,
+	CONDITIONAL const &,
+	ARG const &
+	>::type const
+	sum_(ParticleType const & particles,CONDITIONAL const & conditional, ARG const & arg)
+	{
+		return proto::make_expr<tag::sum_, DataVectorDomain>(
+				particles,
+				boost::ref(conditional),
+				boost::ref(arg)
+		);
+		}
+
 // Here is DataVectorExpr, which extends a proto expr type by
 // giving it an operator [] which uses the ParticleCtx
 // to evaluate an expression with a given index.
@@ -455,6 +457,12 @@ struct DataVectorExpr
 				return proto::eval(*this, ctx);
 			}
 };
+
+DataVectorExpr<proto::terminal<dx_>::type> const dx() {
+	typedef typename proto::terminal<dx_ >::type expr_type;
+	return DataVectorExpr<expr_type>(expr_type::make(dx_()));
+}
+
 
 
 template<typename I, typename ParticlesType>
