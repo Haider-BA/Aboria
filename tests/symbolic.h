@@ -129,7 +129,20 @@ public:
 
        	position = if_else(id == 0, Vect3d(0,0,0), Vect3d(diameter/2.0,0,0));
 
-       	theDouble = sum_(particles, norm_(dx()) < diameter, 1);
+//       	old_posiiton   = position;
+//       	for() {
+//
+//       	position = position  + sqrt(2*D*dt)*normal() + dt*interpolate(position, drift);
+//       	position = any(particles, norm_(dx()) < diameter, reflect(ellipsoid(positionb)))
+//       	}
+//       	dx =position-old_position;
+//       	msd = dot(dx,dx);
+//       	mean = mean(dx);
+//       	var = var(dx);
+       	auto a = get_label<0>();
+       	auto b = get_label<1>();
+
+       	position = sum_(b=particles, norm_(dx()) < diameter), 1);
 
        	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),2);
        	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),2);

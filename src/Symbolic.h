@@ -63,6 +63,9 @@ namespace tag {
 template<typename Expr>
 struct DataVectorExpr;
 
+template<typename Expr>
+struct LabelExpr;
+
 struct null {
 };
 
@@ -188,6 +191,19 @@ struct DataVectorGrammar
 
 {};
 
+  template<int DEPTH>
+  struct LabelGrammar
+    : proto::when< proto::assign<
+      	  	  	  	  proto::terminal<label<DEPTH> >
+    	  	  	  	  , proto::terminal<Particles<_> >
+    			   >
+    				, proto::_value(proto::_child0)
+    >
+
+
+  {};
+
+
 
 //struct DataVectorGrammar
 //		: proto::or_<
@@ -298,7 +314,7 @@ struct DataVectorGrammar
 			};
 
 			const typename ParticlesType1::value_type& particle1_;
-			const typename ParticlesType1::value_type& particle2_;
+			const typename ParticlesType2::value_type& particle2_;
 			const Vect3d& dx_;
 
 		};
@@ -348,15 +364,20 @@ struct ParticleCtx
 				typedef typename Expr::proto_child0 child0_type;
 				typedef typename Expr::proto_child1 child1_type;
 				typedef typename Expr::proto_child2 child2_type;
-				typedef typename proto::result_of::eval<child0_type const, ParticleCtx const>::type particles_type;
+
+				BOOST_MPL_ASSERT(( proto::matches< child0_type, LabelGrammar<1> > ));
+
+				typedef typename boost::result_of<LabelGrammar<1>(child0_type)>::type particles_type;
 				typedef typename proto::result_of::eval<child1_type const, TwoParticleCtx<ParticlesType,particles_type> const>::type conditional_type;
-				typedef typename proto::result_of::eval<child2_type const, TwoParticleCtx<ParticlesType,particles_type> const>::type result_type;
 
 				BOOST_MPL_ASSERT(( boost::is_same<conditional_type,bool > ));
 
+				typedef typename proto::result_of::eval<child2_type const, TwoParticleCtx<ParticlesType,particles_type> const>::type result_type;
+
+
 				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
 				{
-					particles_type particlesb = proto::eval(proto::child<0>(expr),ctx);
+					particles_type particlesb = LabelGrammar<1>(proto::child<0>(expr));
 					child1_type conditional = proto::child<1>(expr);
 					child2_type arg = proto::child<2>(expr);
 					result_type sum = 0;
@@ -382,6 +403,7 @@ struct ParticleCtx
 struct DataVectorDomain
 		: proto::domain<proto::generator<DataVectorExpr>, DataVectorGrammar >
 		{};
+
 
 	template< typename Expr >
 	struct norm_fun
@@ -458,12 +480,20 @@ struct DataVectorExpr
 			}
 };
 
-DataVectorExpr<proto::terminal<dx_>::type> const dx() {
+DataVectorExpr<proto::terminal<dx_>::type> const get_dx() {
 	typedef typename proto::terminal<dx_ >::type expr_type;
 	return DataVectorExpr<expr_type>(expr_type::make(dx_()));
 }
 
 
+template<typename I>
+struct label {};
+
+template<int I>
+proto::terminal<label<mpl::int_<I> > > get_label() {
+	typedef typename proto::terminal<label<mpl::int_<I> > >::type expr_type;
+	return expr_type::make(mpl::int_<I>());
+}
 
 template<typename I, typename ParticlesType>
 struct DataVectorSymbolic
