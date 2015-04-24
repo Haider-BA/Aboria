@@ -1,3 +1,6 @@
+
+cxx_test(symbolic symbolic.h)
+target_link_libraries(symbolic ${VTK_LIBRARIES} ${Boost_LIBRARIES})
 cxx_test(constructors constructors.h)
 target_link_libraries(constructors ${VTK_LIBRARIES} ${Boost_LIBRARIES}) 
 cxx_test(particle_container particle_container.h)
@@ -6,5 +9,3 @@ cxx_test(neighbours neighbours.h)
 target_link_libraries(neighbours ${VTK_LIBRARIES} ${Boost_LIBRARIES}) 
 cxx_test(geometry geometry.h)
 target_link_libraries(geometry ${VTK_LIBRARIES} ${Boost_LIBRARIES})
-cxx_test(symbolic symbolic.h)
-target_link_libraries(symbolic ${VTK_LIBRARIES} ${Boost_LIBRARIES})

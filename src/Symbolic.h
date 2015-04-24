@@ -53,6 +53,11 @@ using proto::N;
 
 namespace Aboria {
 
+template<unsigned int I>
+struct label {};
+
+
+
 namespace tag {
 		struct sum_;
 	}
@@ -191,7 +196,7 @@ struct DataVectorGrammar
 
 {};
 
-  template<int DEPTH>
+  template<unsigned int DEPTH>
   struct LabelGrammar
     : proto::when< proto::assign<
       	  	  	  	  proto::terminal<label<DEPTH> >
@@ -404,6 +409,11 @@ struct DataVectorDomain
 		: proto::domain<proto::generator<DataVectorExpr>, DataVectorGrammar >
 		{};
 
+// Declare that phoenix_domain is a sub-domain of spirit_domain
+ struct LabelDomain 
+        : proto::domain<proto::generator<Label>, LabelGrammer, DataVectorDomain>
+        {};
+
 
 	template< typename Expr >
 	struct norm_fun
@@ -480,19 +490,24 @@ struct DataVectorExpr
 			}
 };
 
-DataVectorExpr<proto::terminal<dx_>::type> const get_dx() {
-	typedef typename proto::terminal<dx_ >::type expr_type;
-	return DataVectorExpr<expr_type>(expr_type::make(dx_()));
-}
+
+template<typename Expr>
+struct LabelExpr {
+    BOOST_PROTO_EXTENDS(Expr, LabelExpr<Expr>, LabelDomain)
+    BOOST_PROTO_EXTENDS_ASSIGN()
+};
 
 
-template<typename I>
-struct label {};
 
-template<int I>
-proto::terminal<label<mpl::int_<I> > > get_label() {
-	typedef typename proto::terminal<label<mpl::int_<I> > >::type expr_type;
-	return expr_type::make(mpl::int_<I>());
+struct Dx
+    : proto::terminal<dx_>::type {};
+
+
+
+
+template<unsigned int I>
+typename proto::result_of::make_expr<proto::tag::terminal, label<I> const>::type const get_label() {
+	return proto::make_expr<proto::tag::terminal, label<I> const>(label<I>());
 }
 
 template<typename I, typename ParticlesType>

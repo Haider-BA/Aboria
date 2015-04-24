@@ -122,7 +122,11 @@ public:
        	particles.push_back(Vect3d(0,0,0));
        	particles.push_back(Vect3d(diameter*2,0,0));
 
-       	theDouble = sum_(particles, norm_(dx()) < diameter, 1);
+       	Label<0> a;
+       	Label<1> b;
+        Dx dx;
+
+       	theDouble = sum_(b=particles, norm_(dx) < diameter, 1);
 
        	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),1);
        	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),1);
@@ -139,10 +143,8 @@ public:
 //       	msd = dot(dx,dx);
 //       	mean = mean(dx);
 //       	var = var(dx);
-       	auto a = get_label<0>();
-       	auto b = get_label<1>();
 
-       	position = sum_(b=particles, norm_(dx()) < diameter), 1);
+       	position = sum_(b=particles, norm_(dx) < diameter, 1);
 
        	TS_ASSERT_EQUALS(particles[0].get_elem<0>(),2);
        	TS_ASSERT_EQUALS(particles[1].get_elem<0>(),2);
