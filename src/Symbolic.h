@@ -54,8 +54,7 @@ using proto::N;
 namespace Aboria {
 
 template<unsigned int I>
-struct label {};
-
+struct label_ {};
 
 
 namespace tag {
@@ -199,7 +198,7 @@ struct DataVectorGrammar
   template<unsigned int DEPTH>
   struct LabelGrammar
     : proto::when< proto::assign<
-      	  	  	  	  proto::terminal<label<DEPTH> >
+      	  	  	  	  proto::terminal<label_<DEPTH> >
     	  	  	  	  , proto::terminal<Particles<_> >
     			   >
     				, proto::_value(proto::_child0)
@@ -443,18 +442,18 @@ struct DataVectorDomain
 
 
 
-	template<typename ParticleType, typename CONDITIONAL, typename ARG>
+	template<typename LABEL, typename CONDITIONAL, typename ARG>
 	typename proto::result_of::make_expr<
 	tag::sum_,
 	DataVectorDomain,
-	ParticleType const &,
+	LABEL const &,
 	CONDITIONAL const &,
 	ARG const &
 	>::type const
-	sum_(ParticleType const & particles,CONDITIONAL const & conditional, ARG const & arg)
+	sum_(LABEL const & label,CONDITIONAL const & conditional, ARG const & arg)
 	{
 		return proto::make_expr<tag::sum_, DataVectorDomain>(
-				particles,
+				boost::ref(label),
 				boost::ref(conditional),
 				boost::ref(arg)
 		);
@@ -490,25 +489,22 @@ struct DataVectorExpr
 			}
 };
 
-
 template<typename Expr>
-struct LabelExpr {
-    BOOST_PROTO_EXTENDS(Expr, LabelExpr<Expr>, LabelDomain)
-    BOOST_PROTO_EXTENDS_ASSIGN()
-};
+struct LabelExpr: proto::extends<Expr, LabelExpr<Expr>, LabelDomain>
+{
+	explicit LabelExpr(Expr const &expr)
+		: proto::extends<Expr, DataVectorExpr<Expr>, DataVectorDomain>(expr)
+		{}
+}
 
+template<typename I>
+struct Label 
+    : LabelExpr<typename proto::terminal<label_<I> >::type> {};
 
 
 struct Dx
     : proto::terminal<dx_>::type {};
 
-
-
-
-template<unsigned int I>
-typename proto::result_of::make_expr<proto::tag::terminal, label<I> const>::type const get_label() {
-	return proto::make_expr<proto::tag::terminal, label<I> const>(label<I>());
-}
 
 template<typename I, typename ParticlesType>
 struct DataVectorSymbolic
