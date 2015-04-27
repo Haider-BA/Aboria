@@ -53,7 +53,7 @@ using proto::N;
 
 namespace Aboria {
 
-template<unsigned int I>
+template<typename I>
 struct label_ {};
 
 
@@ -195,10 +195,9 @@ struct DataVectorGrammar
 
 {};
 
-  template<unsigned int DEPTH>
   struct LabelGrammar
     : proto::when< proto::assign<
-      	  	  	  	  proto::terminal<label_<DEPTH> >
+      	  	  	  	  proto::terminal<label_<_> >
     	  	  	  	  , proto::terminal<Particles<_> >
     			   >
     				, proto::_value(proto::_child0)
@@ -369,9 +368,9 @@ struct ParticleCtx
 				typedef typename Expr::proto_child1 child1_type;
 				typedef typename Expr::proto_child2 child2_type;
 
-				BOOST_MPL_ASSERT(( proto::matches< child0_type, LabelGrammar<1> > ));
+				//BOOST_MPL_ASSERT(( proto::matches< child0_type, LabelGrammar<1> > ));
 
-				typedef typename boost::result_of<LabelGrammar<1>(child0_type)>::type particles_type;
+				typedef typename boost::result_of<LabelGrammar(child0_type)>::type particles_type;
 				typedef typename proto::result_of::eval<child1_type const, TwoParticleCtx<ParticlesType,particles_type> const>::type conditional_type;
 
 				BOOST_MPL_ASSERT(( boost::is_same<conditional_type,bool > ));
@@ -381,7 +380,7 @@ struct ParticleCtx
 
 				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
 				{
-					particles_type particlesb = LabelGrammar<1>(proto::child<0>(expr));
+					particles_type particlesb = LabelGrammar(proto::child<0>(expr));
 					child1_type conditional = proto::child<1>(expr);
 					child2_type arg = proto::child<2>(expr);
 					result_type sum = 0;
@@ -410,7 +409,7 @@ struct DataVectorDomain
 
 // Declare that phoenix_domain is a sub-domain of spirit_domain
  struct LabelDomain 
-        : proto::domain<proto::generator<Label>, LabelGrammer, DataVectorDomain>
+        : proto::domain<proto::generator<LabelExpr>, LabelGrammar, DataVectorDomain>
         {};
 
 
@@ -495,11 +494,30 @@ struct LabelExpr: proto::extends<Expr, LabelExpr<Expr>, LabelDomain>
 	explicit LabelExpr(Expr const &expr)
 		: proto::extends<Expr, DataVectorExpr<Expr>, DataVectorDomain>(expr)
 		{}
-}
+};
 
-template<typename I>
+template< unsigned int I >
+struct LabelExpr
+{
+    BOOST_PROTO_EXTENDS(
+        Expr
+      , LabelExpr<T>
+      , LabelDomain
+    )
+};
+
+template<unsigned int I>
 struct Label 
-    : LabelExpr<typename proto::terminal<label_<I> >::type> {};
+    : LabelExpr<typename proto::terminal<label_<mpl::int_<I> > >::type> {
+
+	typedef typename proto::terminal<label_<mpl::int_<I> > >::type expr_type;
+	explicit Label()
+		: LabelExpr<expr_type>( expr_type::make() )
+	  	{}
+
+};
+
+
 
 
 struct Dx
