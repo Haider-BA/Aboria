@@ -196,14 +196,15 @@ struct DataVectorGrammar
 {};
 
   struct LabelGrammar
-    : proto::when< proto::assign<
+    : proto::or_<
+        proto::when< proto::terminal<Particles<_> >
+                    , proto::_value >
+        , proto::terminal<label_<_> >
+        , proto::when< proto::assign<
       	  	  	  	  proto::terminal<label_<_> >
-    	  	  	  	  , proto::terminal<Particles<_> >
-    			   >
-    				, proto::_value(proto::_child0)
-    >
-
-
+    	  	  	  	  , proto::terminal<Particles<_> > >
+    				, LabelGrammar(proto::_right)>
+      >
   {};
 
 
@@ -492,29 +493,27 @@ template<typename Expr>
 struct LabelExpr: proto::extends<Expr, LabelExpr<Expr>, LabelDomain>
 {
 	explicit LabelExpr(Expr const &expr)
-		: proto::extends<Expr, DataVectorExpr<Expr>, DataVectorDomain>(expr)
+		: proto::extends<Expr, LabelExpr<Expr>, LabelDomain>(expr)
 		{}
+
+
+    BOOST_PROTO_EXTENDS_USING_ASSIGN(LabelExpr)
 };
 
-template< unsigned int I >
-struct LabelExpr
-{
-    BOOST_PROTO_EXTENDS(
-        Expr
-      , LabelExpr<T>
-      , LabelDomain
-    )
-};
 
 template<unsigned int I>
 struct Label 
     : LabelExpr<typename proto::terminal<label_<mpl::int_<I> > >::type> {
 
 	typedef typename proto::terminal<label_<mpl::int_<I> > >::type expr_type;
+    typedef label_<mpl::int_<I> > data_type;
+
 	explicit Label()
-		: LabelExpr<expr_type>( expr_type::make() )
+		: LabelExpr<expr_type>( expr_type::make(data_type()))
 	  	{}
 
+
+    BOOST_PROTO_EXTENDS_USING_ASSIGN(Label)
 };
 
 
