@@ -34,8 +34,10 @@
 #include <boost/proto/core.hpp>
 #include <boost/proto/context.hpp>
 #include <boost/proto/traits.hpp>
+#include <boost/proto/transform.hpp>
 #include <boost/utility/enable_if.hpp>
 #include <boost/type_traits/ice.hpp>
+#include <type_traits>
 #include <tuple>
 //#include <boost/fusion/include/vector.hpp>
 //#include <boost/fusion/include/as_vector.hpp>
@@ -200,10 +202,9 @@ struct DataVectorGrammar
         proto::when< proto::terminal<Particles<_> >
                     , proto::_value >
         , proto::terminal<label_<_> >
-        , proto::when< proto::assign<
-      	  	  	  	  proto::terminal<label_<_> >
-    	  	  	  	  , proto::terminal<Particles<_> > >
-    				, LabelGrammar(proto::_right)>
+        , proto::when< 
+                    _ 
+    				, LabelGrammar(proto::_right) >
       >
   {};
 
@@ -365,30 +366,33 @@ struct ParticleCtx
 			template<typename Expr, typename Arg0>
 			struct eval<Expr, tag::sum_, Arg0 >
 			{
-				typedef typename Expr::proto_child0 child0_type;
-				typedef typename Expr::proto_child1 child1_type;
-				typedef typename Expr::proto_child2 child2_type;
+				typedef typename proto::result_of::child_c<Expr,0>::type child0_type;
+				typedef typename proto::result_of::child_c<Expr,1>::type child1_type;
+				typedef typename proto::result_of::child_c<Expr,2>::type child2_type;
 
 				//BOOST_MPL_ASSERT(( proto::matches< child0_type, LabelGrammar<1> > ));
 
-				typedef typename boost::result_of<LabelGrammar(child0_type)>::type particles_type;
+				typedef typename boost::result_of<LabelGrammar(child0_type)>::type particles_type_ref;
+                typedef typename std::remove_reference<particles_type_ref>::type particles_type;
+				//typedef typename Expr::proto_child0::proto_child1::proto_value particles_type;
 				typedef typename proto::result_of::eval<child1_type const, TwoParticleCtx<ParticlesType,particles_type> const>::type conditional_type;
 
 				BOOST_MPL_ASSERT(( boost::is_same<conditional_type,bool > ));
 
-				typedef typename proto::result_of::eval<child2_type const, TwoParticleCtx<ParticlesType,particles_type> const>::type result_type;
+				typedef typename proto::result_of::eval<child2_type const, TwoParticleCtx<ParticlesType,particles_type> const>::type result_type_const_ref;
+				typedef typename std::remove_const<typename std::remove_reference<particles_type_ref>::type>::type  result_type;
 
 
 				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
 				{
-					particles_type particlesb = LabelGrammar(proto::child<0>(expr));
-					child1_type conditional = proto::child<1>(expr);
-					child2_type arg = proto::child<2>(expr);
+					particles_type_ref particlesb = LabelGrammar()(proto::child_c<0>(expr));
+					child1_type conditional = proto::child_c<1>(expr);
+					child2_type arg = proto::child_c<2>(expr);
 					result_type sum = 0;
-					for (auto i: particlesb.find_neighbours(particle_.get_position())) {
-						TwoParticleCtx<ParticlesType,particles_type> ctx(std::get<1>(i),std::get<0>(i),particle_);
-						if (proto::eval(conditional,ctx)) {
-							sum += proto::eval(arg,ctx);
+					for (auto i: particlesb.get_neighbours(ctx.particle_.get_position())) {
+						TwoParticleCtx<ParticlesType,particles_type> ctx2(std::get<1>(i),std::get<0>(i),ctx.particle_);
+						if (proto::eval(conditional,ctx2)) {
+							sum += proto::eval(arg,ctx2);
 						}
 					}
 					return sum;
