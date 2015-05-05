@@ -380,7 +380,7 @@ struct ParticleCtx
 				BOOST_MPL_ASSERT(( boost::is_same<conditional_type,bool > ));
 
 				typedef typename proto::result_of::eval<child2_type const, TwoParticleCtx<ParticlesType,particles_type> const>::type result_type_const_ref;
-				typedef typename std::remove_const<typename std::remove_reference<particles_type_ref>::type>::type  result_type;
+				typedef typename std::remove_const<typename std::remove_reference<result_type_const_ref>::type>::type  result_type;
 
 
 				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
@@ -389,11 +389,16 @@ struct ParticleCtx
 					child1_type conditional = proto::child_c<1>(expr);
 					child2_type arg = proto::child_c<2>(expr);
 					result_type sum = 0;
+                    std::cout << "doing sum for particle "<<ctx.particle_.get_id()<<std::endl;
 					for (auto i: particlesb.get_neighbours(ctx.particle_.get_position())) {
+                        std::cout << "doing neighbour "<<std::get<0>(i).get_id()<<std::endl;
 						TwoParticleCtx<ParticlesType,particles_type> ctx2(std::get<1>(i),std::get<0>(i),ctx.particle_);
 						if (proto::eval(conditional,ctx2)) {
+                            std::cout <<"conditional is true"<<std::endl;
 							sum += proto::eval(arg,ctx2);
-						}
+						} else {
+                            std::cout <<"conditional is true"<<std::endl;
+                        }
 					}
 					return sum;
 				}
@@ -541,6 +546,7 @@ struct DataVectorSymbolic
 
 	template< typename Expr >
 	DataVectorSymbolic &operator =(Expr const & expr) {
+        BOOST_MPL_ASSERT_NOT(( boost::is_same<I,mpl::int_<ID> > ));
 		return this->assign(proto::as_expr<DataVectorDomain>(expr));
 	}
 
@@ -553,21 +559,11 @@ private:
 		std::for_each(particles.begin(),particles.end(),[&expr](particle_type& i) {
 			Elem<I::value,ParticlesType>::set(i,expr.template eval<ParticlesType>(i));
 		});
+        if (I::value == POSITION) {
+            particles.update_positions();
+        }
 		return *this;
 	}
-};
-
-template<typename ParticlesType>
-struct DataVectorSymbolic<mpl::int_<ID>,ParticlesType>
-	: DataVectorExpr<typename proto::terminal<DataVector<mpl::int_<ID>,ParticlesType> >::type> {
-
-	typedef typename proto::terminal<DataVector<mpl::int_<ID>,ParticlesType> >::type expr_type;
-
-	explicit DataVectorSymbolic(ParticlesType &p)
-	: DataVectorExpr<expr_type>( expr_type::make(DataVector<mpl::int_<ID>,ParticlesType>(p)) )
-	  {}
-
-
 };
 
 

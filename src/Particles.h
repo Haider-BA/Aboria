@@ -64,7 +64,7 @@ template<int I,typename ParticlesType>
 struct Elem {
 	typedef typename std::tuple_element<I,typename ParticlesType::data_type>::type type;
 
-	static const type& get (typename ParticlesType::value_type &arg) {
+	static const type& get (typename ParticlesType::value_type const &arg) {
 		return arg.template get_elem<I>();
 	}
 
@@ -77,7 +77,7 @@ template<typename ParticlesType>
 struct Elem<POSITION, ParticlesType> {
 	typedef Vect3d type;
 
-	static const type& get (typename ParticlesType::value_type &arg) {
+	static const type& get (typename ParticlesType::value_type const &arg) {
 		return arg.get_position();
 	}
 
@@ -90,7 +90,7 @@ template<typename ParticlesType>
 struct Elem<ID, ParticlesType> {
 	typedef std::size_t type;
 
-	static const type& get (typename ParticlesType::value_type &arg) {
+	static const type get (typename ParticlesType::value_type const &arg) {
 		return arg.get_id();
 	}
 
@@ -100,7 +100,7 @@ template<typename ParticlesType>
 struct Elem<ALIVE, ParticlesType> {
 	typedef bool type;
 
-	static const type& get (typename ParticlesType::value_type &arg) {
+	static const type get (typename ParticlesType::value_type const &arg) {
 		return arg.get_alive();
 	}
 
