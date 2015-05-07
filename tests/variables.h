@@ -56,6 +56,11 @@ public:
         c.set(3.6);
 
         TS_ASSERT_EQUALS(c.value(),3.6);
+
+        c = 3.8;
+
+        TS_ASSERT_EQUALS(c.value(),3.8);
+
     }
 
     void testVector(void) {
@@ -79,7 +84,37 @@ public:
         c.set(Vect3d(3.6,3.6,3.6));
 
         TS_ASSERT_EQUALS(c.value(),Vect3d(3.6,3.6,3.6));
+
+        c = Vect3d(3.6,3.6,3.6);
+
+        TS_ASSERT_EQUALS(c.value(),Vect3d(3.6,3.6,3.6));
+
     }
+
+    void testMacro(void) {
+        ABORIA_VARIABLE(a_type,double,"a")
+        ABORIA_VARIABLE(b_type,double,"b")
+        ABORIA_VARIABLE(c_type,double,"c")
+
+        a_type a(1);
+        b_type b(2.5);
+        c_type c = a + b;
+
+        TS_ASSERT_EQUALS(c.value(),3.6);
+        TS_ASSERT_EQUALS(a*b.value(),2.5);
+        TS_ASSERT_EQUALS(a/b.value(),0.4);
+
+        c.set(3.6);
+
+        TS_ASSERT_EQUALS(c.value(),3.6);
+
+        c = 3.6;
+
+        TS_ASSERT_EQUALS(c.value(),3.6);
+
+    }
+
+
 };
 
 

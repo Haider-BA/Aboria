@@ -36,7 +36,8 @@ using namespace Aboria;
 class NeighboursTest : public CxxTest::TestSuite {
 public:
     void test_single_particle(void) {
-    	typedef Particles<std::tuple<double> > Test_type;
+        ABORIA_VARIABLE(scalar,double,"scalar")
+    	typedef Particles<scalar> Test_type;
     	Test_type test;
     	Vect3d min(-1,-1,-1);
     	Vect3d max(1,1,1);
@@ -62,7 +63,8 @@ public:
     }
 
     void test_two_particles(void) {
-    	typedef Particles<std::tuple<double> > Test_type;
+        ABORIA_VARIABLE(scalar,double,"scalar")
+    	typedef Particles<scalar> Test_type;
     	Test_type test;
     	Vect3d min(-1,-1,-1);
     	Vect3d max(1,1,1);
@@ -90,7 +92,8 @@ public:
     }
 
     void test_create_particles(void) {
-    	typedef Particles<std::tuple<double> > Test_type;
+        ABORIA_VARIABLE(scalar,double,"scalar")
+    	typedef Particles<scalar> Test_type;
     	Test_type test;
     	Vect3d min(-1,-1,-1);
     	Vect3d max(1,1,1);

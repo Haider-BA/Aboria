@@ -37,13 +37,15 @@ using namespace Aboria;
 class SymbolicTest : public CxxTest::TestSuite {
 public:
     void test_create_double_vector(void) {
-    	typedef Particles<std::tuple<double> > ParticlesType;
+        ABORIA_VARIABLE(scalar,double,"scalar")
+    	typedef Particles<scalar> ParticlesType;
     	ParticlesType particles;
     	auto theDouble = get_vector<0>(particles);
     }
 
     void test_create_default_vectors(void) {
-    	typedef Particles<std::tuple<double> > ParticlesType;
+        ABORIA_VARIABLE(scalar,double,"scalar")
+    	typedef Particles<scalar> ParticlesType;
     	ParticlesType particles;
     	auto position = get_vector<POSITION>(particles);
     	auto id = get_vector<ID>(particles);
@@ -51,7 +53,8 @@ public:
     }
 
     void test_transform(void) {
-    	typedef Particles<std::tuple<double> > ParticlesType;
+        ABORIA_VARIABLE(scalar,double,"scalar")
+    	typedef Particles<scalar> ParticlesType;
     	ParticlesType particles;
     	auto theDouble = get_vector<0>(particles);
     	auto position = get_vector<POSITION>(particles);
@@ -105,7 +108,8 @@ public:
     }
 
     void test_neighbours(void) {
-       	typedef Particles<std::tuple<double> > ParticlesType;
+        ABORIA_VARIABLE(scalar,double,"scalar")
+    	typedef Particles<scalar> ParticlesType;
        	ParticlesType particles;
 
         Vect3d min(-1,-1,-1);
