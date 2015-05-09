@@ -35,6 +35,7 @@
 #include <boost/range/adaptors.hpp>
 #include <boost/fusion/algorithm.hpp>
 #include <boost/fusion/adapted/std_tuple.hpp>
+#include <boost/mpl/vector.hpp>
 #include "Zip.h"
 #include "Vector.h"
 //#include "MyRandom.h"
@@ -113,132 +114,115 @@ struct Elem<ALIVE, ParticlesType> {
 
 
 
-template<typename ... Types> 
+template<typename ... TYPES> 
 class Particles {
 	template<typename T>
 	friend class Particles;
 public:
 
-	typedef mpl::vector<C...> data_type;
+    typedef typename std::tuple<position,id,alive,TYPES...> tuple_type;
+	typedef typename mpl::vector<position,id,alive,TYPES...> type_vector;
 
     template<typename T>
-    struct elem {
-        BOOST_MPL_ASSERT(
-	    typedef typename std::tuple_element<I,typename ParticlesType::data_type>::type type;
-
-	    static const type& get (typename ParticlesType::value_type const &arg) {
-		    return arg.template get_elem<I>();
-	    }
-
-	    static void set (typename ParticlesType::value_type &arg, const type& data) {
-		    return arg.template set_elem<I>(data);
-	    }
+    struct elem_by_type {
+        typedef T type;
+        typedef typename T::value_type value_type;
+        typedef typename mpl::find<type_vector,T>::type iter; 
+        BOOST_MPL_ASSERT_NOT(( boost::is_same< mpl::end<type_vector>::type, iter::type > ))
+        static const unsigned index = iter::pos::value;
     };
+    template<unsigned int I>
+    struct elem_by_index {
+        BOOST_MPL_ASSERT_RELATION( (mpl::size<type_vector>::type::value), >, I );
+        typedef typename mpl::at<type_vector,mpl::int_<I> > type;
+        typedef typename type::value_type value_type;
+        static const unsigned index = I;
+    };
+
+    class value_type;
+
+    template<typename T>
+	const typename elem_by_type<T>::value_type & get(const value_type & arg) const {
+	    return arg.template get<T>();
+    }
+	template<typename T>
+	const typename elem_by_type<T>::value_type & get(value_type & arg) {
+	    return arg.template get<T>();
+	}
+
+    template<typename T>
+    void set(value_type & arg, const typename elem_by_type<T>::value_type & data) {
+		arg.template set(data);
+    }
 
 	class value_type {
 		friend class Particles;
 	public:
 		typedef std::mt19937 generator_type;
-		value_type():uni(0,1),normal(0,1){}
+		value_type():m_uni(0,1),m_normal(0,1){}
 		value_type(const value_type& rhs) {
-			r = rhs.r;
-			data = rhs.data;
-			alive = rhs.alive;
-			id = rhs.id;
-			generator = rhs.generator;
+			m_data = rhs.m_data;
+			m_generator = rhs.m_generator;
 		}
-		value_type(const Vect3d &position):
-			r(position),uni(0,1),normal(0,1) {}
+		value_type(const Vect3d &r):
+			m_uni(0,1),m_normal(0,1) {
+            set<position>(*this,r);
+        }
 		~value_type() {
 
 		}
 		value_type& operator=(const value_type &rhs) {
 			if (this != &rhs) {
-				data = rhs.dattypea;
+				m_data = rhs.m_data;
 			}
 			return *this;
 		}
 
 		bool operator==(const value_type &rhs) const {
-			return id == rhs.id;
+			return get<id>(*this) == get<id>(rhs);
 		}
 
 		void deep_copy(const value_type &rhs) {
 			if (this != &rhs) {
-				r = rhs.r;
-				data = rhs.data;
-				alive = rhs.alive;
-				id = rhs.id;
-				generator = rhs.generator;
+				m_data = rhs.m_data;
+				m_generator = rhs.m_generator;
 			}
 		}
 
-//		Vect3d& get_position() {
-//			return r;
-//		}
-		const Vect3d& get_position() const {
-			return r;
+		template<typename T>
+		const typename elem_by_type<T>::value_type & get() const {
+			return std::get<elem_by_type<T>::index>(m_data);
 		}
-		void set_position(const Vect3d& arg) {
-			r = arg;
-		}
-		const DataType& get_data_const() const {
-			return data;
-		}
-		DataType& get_data() {
-			return data;
-		}
-//		template<int N>
-//		std::tuple_element<N,DataType>::type& get_data_elem() {
-//			return std::get<N>(data);
-//		}
-		template<int I>
-		const typename Elem<I, Particles<DataType> >::type& get_elem() const {
-			return std::get<I>(data);
-		}
-		template<int I>
-		typename Elem<I, Particles<DataType> >::type& get_elem() {
-			return std::get<I>(data);
-		}
-		template<int I>
-		void set_elem(const typename Elem<I, Particles<DataType> >::type& arg) {
-			std::get<I>(data) = arg;
+		template<typename T>
+		const typename elem_by_type<T>::value_type & get() {
+			return std::get<elem_by_type<T>::index>(m_data);
 		}
 
-		size_t get_index() {
-			return index;
+		template<typename T>
+		void set(const typename elem_by_type<T>::value_type & arg) {
+			std::get<elem_by_type<T>::index>(m_data) = arg;
 		}
-		bool get_alive() const {
-			return alive;
-		}
-		void set_alive(bool aliveIn) const {
-			alive = aliveIn;
-		}
+
 		generator_type get_generator() {
-			return generator;
+			return m_generator;
 		}
 		double rand_uniform() {
-			return uni(generator);
+			return m_uni(m_generator);
 		}
 
 		double rand_normal() {
-			return normal(generator);
-		}
-		const std::size_t get_id() const {
-			return id;
-		}
-		void mark_for_deletion() {
-			alive = false;
+			return m_normal(m_generator);
 		}
 
 	private:
 
-        std::tuple<position,id,alive,C...> data;
-		generator_type generator;
-		std::uniform_real_distribution<double> uni;
-		std::normal_distribution<double> normal;
+        tuple_type m_data;
+		generator_type m_generator;
+		std::uniform_real_distribution<double> m_uni;
+		std::normal_distribution<double> m_normal;
 
 	};
+
 	typedef typename std::vector<value_type> vector_type;
 	typedef typename vector_type::size_type size_type;
 	typedef typename vector_type::size_type difference_type;
@@ -246,7 +230,7 @@ public:
 	typedef typename vector_type::const_iterator const_iterator;
 	struct get_pos {
 		const Vect3d& operator()(const value_type& i) const {
-			return i.get_position();
+			return get<position>(i);
 		}
 	};
 	typedef BucketSort<const_iterator,get_pos> NeighbourSearch_type;
@@ -300,14 +284,13 @@ public:
 		return data.end();
 	}
 
-
 	void delete_particles() {
 		const int n = data.size();
 		for (int index = 0; index < n; ++index) {
 			value_type& i = data[index];
-			if (i.alive==false) {
+			if (get<alive>(i) == false) {
 				i.deep_copy(*(data.cend()-1));
-				if (track_ids) id_to_index[i.id] = index;
+				if (track_ids) id_to_index[get<id>(i)] = index;
 				data.pop_back();
 			}
 		}
@@ -388,7 +371,7 @@ public:
 	template<typename F>
 	void reset_neighbour_search(const double length_scale, F f) {
 		std::for_each(begin(),end(),[&f](value_type& i) {
-			i.r = f(i);
+			set<position>(i,f(i));
 		});
 		neighbour_search.reset(neighbour_search.get_low(),neighbour_search.get_high(),length_scale,neighbour_search.get_periodic());
 		neighbour_search.embed_points(data.cbegin(),data.cend());
@@ -531,7 +514,7 @@ public:
 	template<typename F>
 	void update_positions(iterator b, iterator e, F f) {
 		std::for_each(b,e,[&f](value_type& i) {
-			i.r = f(i);
+			set<position>(i,f(i));
 		});
 		if (searchable) {
 			enforce_domain(neighbour_search.get_low(),neighbour_search.get_high(),neighbour_search.get_periodic());
@@ -541,7 +524,7 @@ public:
 	template<typename F>
 	void update_positions(F f) {
 		std::for_each(begin(),end(),[&f](value_type& i) {
-			i.r = f(i);
+			set<position>(i,f(i));
 		});
 		if (searchable) {
 			enforce_domain(neighbour_search.get_low(),neighbour_search.get_high(),neighbour_search.get_periodic());
@@ -748,14 +731,14 @@ private:
 		std::for_each(begin(),end(),[low,high,periodic](value_type& i) {
 			for (int d = 0; d < 3; ++d) {
 				if (periodic[d]) {
-					while (i.r[d]<low[d]) {
-						i.r[d] += (high[d]-low[d]);
+					while (get<position>(i)[d]<low[d]) {
+						get<position>(i)[d] += (high[d]-low[d]);
 					}
-					while (i.r[d]>=high[d]) {
-						i.r[d] -= (high[d]-low[d]);
+					while (get<position>(i)[d]>=high[d]) {
+						get<position>(i)[d] -= (high[d]-low[d]);
 					}
 				} else {
-					if ((i.r[d]<low[d]) || (i.r[d]>=high[d])) {
+					if ((get<position>(i)[d]<low[d]) || (get<position>(i)[d]>=high[d])) {
 						i.mark_for_deletion();
 					}
 				}
@@ -765,9 +748,9 @@ private:
 			const int n = data.size();
 			for (int index = 0; index < n; ++index) {
 				value_type& i = data[index];
-				if (i.alive==false) {
+				if (get<alive>(i)==false) {
 					i.deep_copy(*(data.cend()-1));
-					if (track_ids) id_to_index[i.id] = index;
+					if (track_ids) id_to_index[get<id>(i)] = index;
 					data.pop_back();
 				}
 			}
