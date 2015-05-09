@@ -113,11 +113,27 @@ struct Elem<ALIVE, ParticlesType> {
 
 
 
-template<typename DataType=std::tuple<double> >
+template<typename ... Types> 
 class Particles {
 	template<typename T>
 	friend class Particles;
 public:
+
+	typedef mpl::vector<C...> data_type;
+
+    template<typename T>
+    struct elem {
+        BOOST_MPL_ASSERT(
+	    typedef typename std::tuple_element<I,typename ParticlesType::data_type>::type type;
+
+	    static const type& get (typename ParticlesType::value_type const &arg) {
+		    return arg.template get_elem<I>();
+	    }
+
+	    static void set (typename ParticlesType::value_type &arg, const type& data) {
+		    return arg.template set_elem<I>(data);
+	    }
+    };
 
 	class value_type {
 		friend class Particles;
@@ -215,30 +231,14 @@ public:
 			alive = false;
 		}
 
-		template<typename T>
-		boost::iterator_range<typename T::element_type::NeighbourSearch_type::const_iterator> get_neighbours(const T particles) {
-			ASSERT(particles->searchable==true,"particles is not searchable");
-			return boost::make_iterator_range(
-			 particles->neighbour_search.find_broadphase_neighbours(get_position(), index,false),
-			 particles->neighbour_search.end());
-		}
-
-		template<typename T>
-		Vect3d correct_position_for_periodicity(const T particles, const Vect3d& position) {
-			return particles->neighbour_search.correct_position_for_periodicity(r, position);
-		}
 	private:
 
-		Vect3d r;
-		bool alive;
-		std::size_t id,index;
-		DataType data;
+        std::tuple<position,id,alive,C...> data;
 		generator_type generator;
 		std::uniform_real_distribution<double> uni;
 		std::normal_distribution<double> normal;
 
 	};
-	typedef DataType data_type;
 	typedef typename std::vector<value_type> vector_type;
 	typedef typename vector_type::size_type size_type;
 	typedef typename vector_type::size_type difference_type;
