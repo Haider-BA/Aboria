@@ -53,65 +53,18 @@
 namespace Aboria {
 
 
-template<typename DataType>
-class DataNames {
-public:
-	std::string static get(unsigned int n) {
-		return "data_" + std::to_string(n);
-	}
-};
-
-template<int I,typename ParticlesType>
-struct Elem {
-	typedef typename std::tuple_element<I,typename ParticlesType::data_type>::type type;
-
-	static const type& get (typename ParticlesType::value_type const &arg) {
-		return arg.template get_elem<I>();
-	}
-
-	static void set (typename ParticlesType::value_type &arg, const type& data) {
-		return arg.template set_elem<I>(data);
-	}
-};
-
-template<typename ParticlesType>
-struct Elem<POSITION, ParticlesType> {
-	typedef Vect3d type;
-
-	static const type& get (typename ParticlesType::value_type const &arg) {
-		return arg.get_position();
-	}
-
-	static void set (typename ParticlesType::value_type &arg, const type& data) {
-		return arg.set_position(data);
-	}
-};
-
-template<typename ParticlesType>
-struct Elem<ID, ParticlesType> {
-	typedef std::size_t type;
-
-	static const type get (typename ParticlesType::value_type const &arg) {
-		return arg.get_id();
-	}
-
-};
-
-template<typename ParticlesType>
-struct Elem<ALIVE, ParticlesType> {
-	typedef bool type;
-
-	static const type get (typename ParticlesType::value_type const &arg) {
-		return arg.get_alive();
-	}
-
-	static void set (typename ParticlesType::value_type &arg, const type& data) {
-		return arg.set_alive(data);
-	}
-};
-
-
-
+template<typename T, typename PT>
+const typename PT::elem_by_type<T>::value_type & get(const PT::value_type & arg) const {
+    return arg.template get<T>();
+}
+template<typename T, typename PT>
+typename PT::elem_by_type<T>::value_type & get(PT::value_type & arg) {
+    return arg.template get<T>();
+}
+template<typename T, typename PT>
+void set(PT::value_type & arg, const typename PT::elem_by_type<T>::value_type & data) {
+    arg.template set(data);
+}
 
 
 template<typename ... TYPES> 
@@ -129,7 +82,7 @@ public:
         typedef typename T::value_type value_type;
         typedef typename mpl::find<type_vector,T>::type iter; 
         BOOST_MPL_ASSERT_NOT(( boost::is_same< mpl::end<type_vector>::type, iter::type > ))
-        static const unsigned index = iter::pos::value;
+        static const unsigned int index = iter::pos::value;
     };
     template<unsigned int I>
     struct elem_by_index {
@@ -139,23 +92,7 @@ public:
         static const unsigned index = I;
     };
 
-    class value_type;
-
-    template<typename T>
-	const typename elem_by_type<T>::value_type & get(const value_type & arg) const {
-	    return arg.template get<T>();
-    }
-	template<typename T>
-	const typename elem_by_type<T>::value_type & get(value_type & arg) {
-	    return arg.template get<T>();
-	}
-
-    template<typename T>
-    void set(value_type & arg, const typename elem_by_type<T>::value_type & data) {
-		arg.template set(data);
-    }
-
-	class value_type {
+   	class value_type {
 		friend class Particles;
 	public:
 		typedef std::mt19937 generator_type;
@@ -303,7 +240,7 @@ public:
 	iterator erase (iterator i) {
 		if (i != end()-1) {
 			i->deep_copy(*(data.cend()-1));
-			if (track_ids) id_to_index[i->id] = i-begin();
+			if (track_ids) id_to_index[get<id>(*i)] = i-begin();
 			if (searchable) neighbour_search.copy_points(i,end());
 
 		}
@@ -394,20 +331,16 @@ public:
 		return neighbour_search.get_high();
 	}
 
-
-
 	void push_back (const value_type& val) {
 		data.push_back(val);
 		if (searchable) neighbour_search.update_begin_and_end(data.cbegin(),data.cend());
 		const int index = data.size();
 		iterator i = end()-1;
-		i->r = val.r;
-		//if (std::get<1>(i->data).norm()>1) std::cout <<"adding bad orientation"<<std::endl;
-		i->id = this->next_id++;
-		i->generator.seed(i->id*seed);
-		i->alive = true;
-		i->index = index;
-		if (track_ids) id_to_index[i->id] = index;
+		set<position>(*i,get<position(val));
+		set<id>(i,this->next_id++);
+		i->generator.seed(get<id>(*i)*seed);
+		set<alive>(*i,true);
+		if (track_ids) id_to_index[get<id>(*i)] = index;
 		if (searchable) neighbour_search.add_point(i);
 	}
 
@@ -426,12 +359,11 @@ public:
 		if (searchable) neighbour_search.update_begin_and_end(data.cbegin(),data.cend());
 		int index = old_size;
 		for (auto i=data.begin()+old_size; i!=data.end();i++,index++) {
-			i->id = this->next_id++;
+			set<id>(*i,this->next_id++);
 			i->generator.seed(i->id*seed);
-			i->alive = true;
-			i->index = index;
-			i->r = f(*i);
-			if (track_ids) id_to_index[i->id] = index;
+			set<alive>(*i,true);
+			set<position(*i,f(*i));
+			if (track_ids) id_to_index[get<id>(*i)] = index;
 			if (searchable) neighbour_search.add_point(i);
 		}
 	}
@@ -442,7 +374,6 @@ public:
 				neighbour_search.end());
 	}
 
-	template<typename F>
 	void create_particles_cylinder(const Vect3d& min, const Vect3d& max, const int n, double dem_diameter, F f) {
 		int shift=0;
 		bool shiftz=false;
