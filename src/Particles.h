@@ -73,7 +73,7 @@ class Particles {
 	friend class Particles;
 public:
 
-    typedef typename std::tuple<position,id,alive,TYPES...> tuple_type;
+    typedef typename std::tuple<position::value_type,id::value_type,alive::value_type,TYPES::value_type...> tuple_type;
 	typedef typename mpl::vector<position,id,alive,TYPES...> type_vector;
 
     template<typename T>
@@ -187,7 +187,7 @@ public:
 		seed(seed)
 	{}
 
-	Particles(const Particles<DataType> &other):
+	Particles(const Particles<TYPES...> &other):
 			data(other.data),
 			neighbour_search(other.neighbour_search),
 			next_id(other.next_id),
@@ -204,8 +204,8 @@ public:
 		seed(0)
 	{}
 
-	static ptr<Particles<DataType> > New() {
-		return ptr<Particles<DataType> >(new Particles<DataType> ());
+	static ptr<Particles<TYPES...> > New() {
+		return ptr<Particles<TYPES...> >(new Particles<TYPES...> ());
 	}
 
 	value_type& operator[](std::size_t idx) {
@@ -497,69 +497,87 @@ public:
 
 
 #ifndef HAVE_VTK
-	struct save_elem {
-		typedef int result_type;
-		save_elem(int index, vtkSmartPointer<vtkFloatArray>* datas):
-			index(index),datas(datas){}
-		template<typename T>
-		result_type operator()(result_type state, T& t) const {
-			datas[state]->SetValue(index,t);
-			return state + 1;
-		}
-		//template<>
-		result_type operator()(result_type state, Vect3d& t) const {
-			datas[state]->SetTuple3(index,t[0],t[1],t[2]);
-			return state + 1;
-		}
-		result_type operator()(result_type state, const Vect3d& t) const {
-			datas[state]->SetTuple3(index,t[0],t[1],t[2]);
-			return state + 1;
-		}
+	struct write_from_tuple {
+		write_from_tuple(tuple_type &write_from, int index, vtkSmartPointer<vtkFloatArray>* datas):
+			write_from(write_from),index(index),datas(datas){}
+
+        template< typename U > void operator()(U i) {
+            typedef typename std::tuple_element<U::value,tuple_type>::type data_type;
+            data_type &write_from_elem = std::get<U::value>(write_from);
+            if (boost::is_same<data_type,Vect3d>::value) {
+                datas[state]->SetTuple3(index,write_from_elem[0],
+                                              write_from_elem[1],
+                                              write_from_elem[2]);
+            } else {
+			    datas[state]->SetValue(index,write_from_elem);
+            }
+        }
+
+        tuple_type &write_from;
 		int index;
 		vtkSmartPointer<vtkFloatArray>* datas;
 	};
-	struct read_elem {
-			typedef int result_type;
-			read_elem(int index, vtkSmartPointer<vtkFloatArray>* datas):
-				index(index),datas(datas){}
-			template<typename T>
-			result_type operator()(result_type state, T& t) const {
-				t = datas[state]->GetValue(index);
-				return state + 1;
-			}
-			//template<>
-			result_type operator()(result_type state, Vect3d& t) const {
+
+	struct read_into_tuple {
+	    read_into_tuple(tuple_type &read_into, int index, vtkSmartPointer<vtkFloatArray>* datas):
+		    read_into(read_into),index(index),datas(datas){}
+
+        template< typename U > void operator()(U i) {
+            typedef typename std::tuple_element<U::value,tuple_type>::type data_type;
+            data_type &read_into_elem = std::get<U::value>(read_into);
+            if (boost::is_same<data_type,Vect3d>::value) {
 				double *data = datas[state]->GetTuple3(index);
-				t[0] = data[0];
-				t[1] = data[1];
-				t[2] = data[2];
-				return state + 1;
-			}
-			int index;
-			vtkSmartPointer<vtkFloatArray>* datas;
-	};
-	struct setup_data {
-		typedef int result_type;
-		setup_data(vtkSmartPointer<vtkFloatArray>* datas):
-			datas(datas){}
+                read_into_elem[0] = data[0];
+                read_into_elem[1] = data[1];
+                read_into_elem[2] = data[2];
+            } else {
+                read_into_elem = datas[state]->GetValue(index);
+            }
+        }
 
-		template<typename T>
-		result_type operator()(result_type state, T& t) const {
-			datas[state]->SetNumberOfComponents(1);
-			return state + 1;
-		}
-		result_type operator()(result_type state, const Vect3d& t) const {
-			datas[state]->SetNumberOfComponents(3);
-			return state + 1;
-		}
-		result_type operator()(result_type state, Vect3d& t) const {
-			datas[state]->SetNumberOfComponents(3);
-			return state + 1;
-		}
-		//template<>
-
+        tuple_type &read_into;
+		int index;
 		vtkSmartPointer<vtkFloatArray>* datas;
 	};
+	
+    struct setup_datas_for_writing {
+		setup_datas_for_writing(size_t n, vtkSmartPointer<vtkFloatArray>* datas):
+			n(n),datas(datas){}
+        template< typename U > void operator()(U i) {
+            std::string name = mpl::at<type_vector,U::value>::type::name;
+            datas[i] = vtkFloatArray::SafeDownCast(grid->GetPointData()->GetArray(name.c_str()));
+			if (!datas[i]) {
+				datas[i] = vtkSmartPointer<vtkFloatArray>::New();
+				datas[i]->SetName(name.c_str());
+				grid->GetPointData()->AddArray(datas[i]);
+			}
+            if (boost::is_same<mpl::at<type_vector,U::value>::type::value_type, Vect3d>::value) {
+                datas[state]->SetNumberOfComponents(3);
+            } else {
+                datas[state]->SetNumberOfComponents(1);
+            }
+			datas[i]->SetNumberOfTuples(n);
+        }
+
+        size_t n;
+		vtkSmartPointer<vtkFloatArray>* datas;
+    };
+
+    struct setup_datas_for_reading {
+		setup_datas_for_reading(size_t n,vtkSmartPointer<vtkFloatArray>* datas):
+			n(n),datas(datas){}
+        template< typename U > void operator()(U i) {
+            std::string name = mpl::at<type_vector,U::value>::type::name;
+			datas[i] = vtkFloatArray::SafeDownCast(grid->GetPointData()->GetArray(name.c_str()));
+			CHECK(datas[i],"No data array "<<name<<" in vtkUnstructuredGrid");
+			CHECK(datas[i]->GetNumberOfTuples()==n,"Data array "<<name<<" has size != id array. data size = "<<datas[i]->GetNumberOfTuples()<<". id size = "<<n);
+        }
+
+        size_t n;
+		vtkSmartPointer<vtkFloatArray>* datas;
+    };
+
+
 
 	vtkSmartPointer<vtkUnstructuredGrid> get_grid() {
 		if (!cache_grid) cache_grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
@@ -579,46 +597,28 @@ public:
 			grid->SetCells(1,cells);
 		}
 		vtkSmartPointer<vtkUnsignedCharArray> cell_types = grid->GetCellTypesArray();
-		vtkSmartPointer<vtkIntArray> ids = vtkIntArray::SafeDownCast(grid->GetPointData()->GetArray("id"));
-		if (!ids) {
-			ids = vtkSmartPointer<vtkIntArray>::New();
-			ids->SetName("id");
-			grid->GetPointData()->AddArray(ids);
-		}
-		constexpr size_t dn = std::tuple_size<DataType>::value;
-		vtkSmartPointer<vtkFloatArray> datas[dn];
-		for (int i = 0; i < dn; ++i) {
-			std::string name = DataNames<DataType>::get(i);
-			datas[i] = vtkFloatArray::SafeDownCast(grid->GetPointData()->GetArray(name.c_str()));
-			if (!datas[i]) {
-				datas[i] = vtkSmartPointer<vtkFloatArray>::New();
-				datas[i]->SetName(name.c_str());
-				grid->GetPointData()->AddArray(datas[i]);
-			}
-		}
-		boost::fusion::fold(DataType(),0,setup_data(datas));
+		
 
 		const vtkIdType n = size();
+
+		constexpr size_t dn = std::tuple_size<tuple_type>::value;
+		vtkSmartPointer<vtkFloatArray> datas[dn];
+        mpl::for_each<mpl::range_c<int,1,mpl::size<type_vector>::type::value> > (setup_datas_for_writing(n,datas));
 		points->SetNumberOfPoints(n);
 		cells->Reset();
 		cell_types->Reset();
-		ids->SetNumberOfTuples(n);
-		for (int i = 0; i < dn; ++i) {
-			datas[i]->SetNumberOfTuples(n);
-		}
 		int j = 0;
 
 		for(auto& i: *this) {
 			const int index = j++;
 			//std::cout <<"copying point at "<<i.get_position()<<" with id = "<<i.get_id()<<std::endl;
-			points->SetPoint(index,i.get_position()[0],i.get_position()[1],i.get_position()[2]);
+            const Vect3d &r = get<position>(i);
+			points->SetPoint(index,r[0],r[1],r[2]);
 			cells->InsertNextCell(1);
 			cells->InsertCellPoint(index);
 			cell_types->InsertNextTuple1(1);
-			ids->SetValue(index,i.get_id());
 
-
-			boost::fusion::fold(i.get_data(),0,save_elem(index,datas));
+            mpl::for_each<mpl::range_c<int,1,mpl::size<type_vector>::type::value> > (write_from_tuple(i.m_data,index,datas));
 		}
 	}
 
@@ -631,26 +631,20 @@ public:
 			vtkSmartPointer<vtkUnsignedCharArray> cell_types = grid->GetCellTypesArray();
 			vtkSmartPointer<vtkIntArray> ids = vtkIntArray::SafeDownCast(grid->GetPointData()->GetArray("id"));
 			CHECK(ids,"No id array in vtkUnstructuredGrid");
-			constexpr size_t dn = std::tuple_size<DataType>::value;
+			constexpr size_t dn = std::tuple_size<tuple_type>::value;
 
 			vtkSmartPointer<vtkFloatArray> datas[dn];
 
 			const vtkIdType n = ids->GetSize();
 
-			for (int i = 0; i < dn; ++i) {
-				std::string name = DataNames<DataType>::get(i);
-				datas[i] = vtkFloatArray::SafeDownCast(grid->GetPointData()->GetArray(name.c_str()));
-				CHECK(datas[i],"No data array "<<name<<" in vtkUnstructuredGrid");
-				CHECK(datas[i]->GetNumberOfTuples()==n,"Data array "<<name<<" has size != id array. data size = "<<datas[i]->GetNumberOfTuples()<<". id size = "<<n);
-			}
+            mpl::for_each<mpl::range_c<int,1,mpl::size<type_vector>::type::value> > (setup_datas_for_reading(n,datas));
 
 			this->clear();
 
 			for (int j = 0; j < n; ++j) {
 				value_type particle;
 				particle.r  = points->GetPoint(j);
-				particle.id = ids->GetValue(j);
-				boost::fusion::fold(particle.get_data(),0,read_elem(j,datas));
+                mpl::for_each<mpl::range_c<int,1,mpl::size<type_vector>::type::value> > (read_into_tuple(particle.m_data,index,datas));
 				this->push_back(particle);
 			}
 		}
@@ -658,20 +652,22 @@ public:
 
 private:
 
+
 	void enforce_domain(const Vect3d& low, const Vect3d& high, const Vect3b& periodic, const bool remove_deleted_particles = false) {
 		std::for_each(begin(),end(),[low,high,periodic](value_type& i) {
+            Vect3d &r = get<position>(i);
 			for (int d = 0; d < 3; ++d) {
 				if (periodic[d]) {
-					while (get<position>(i)[d]<low[d]) {
-						get<position>(i)[d] += (high[d]-low[d]);
+					while (r[d]<low[d]) {
+						r[d] += (high[d]-low[d]);
 					}
 					while (get<position>(i)[d]>=high[d]) {
-						get<position>(i)[d] -= (high[d]-low[d]);
+						r[d] -= (high[d]-low[d]);
 					}
 				} else {
-					if ((get<position>(i)[d]<low[d]) || (get<position>(i)[d]>=high[d])) {
-						i.mark_for_deletion();
-					}
+					if ((r[d]<low[d]) || (r[d]>=high[d])) {
+						set<alive>(i,false);
+                    }
 				}
 			}
 		});

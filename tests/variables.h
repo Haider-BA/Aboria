@@ -36,84 +36,50 @@ using namespace Aboria;
 class VariablesTest: public CxxTest::TestSuite {
 public:
     void testScalar(void) {
-        struct a_name {
-            static const char *name = "a";
-        }
-        struct a_name {
-            static const char *name = "b";
-        }
-        struct a_name {
-            static const char *name = "c";
-        }
-        Variable<double,a_name> a(1);
-        Variable<double,b_name> b(2.5);
-        Variable<double,c_name> c = a + b;
 
-        TS_ASSERT_EQUALS(c.value(),3.6);
-        TS_ASSERT_EQUALS(a*b.value(),2.5);
-        TS_ASSERT_EQUALS(a/b.value(),0.4);
+        ABORIA_VARIABLE(a,double,"a")
+        ABORIA_VARIABLE(b,float,"b")
+        ABORIA_VARIABLE(c,int,"c")
 
-        c.set(3.6);
+        Particles<a,b,c>::value_type p;
+        set<a>(p,1.2);
+        set<b>(p,1.3);
+        set<c>(p,1);
 
-        TS_ASSERT_EQUALS(c.value(),3.6);
+        TS_ASSERT_EQUALS(get<a>(p),1.2);
+        TS_ASSERT_EQUALS(get<b>(p),1.3);
+        TS_ASSERT_EQUALS(get<c>(p),1);
 
-        c = 3.8;
+        get<a>(p) = 2.2;
+        get<b>(p) = 2.3;
+        get<c>(p) = 2;
 
-        TS_ASSERT_EQUALS(c.value(),3.8);
+
+        TS_ASSERT_EQUALS(get<a>(p),1.2);
+        TS_ASSERT_EQUALS(get<b>(p),1.3);
+        TS_ASSERT_EQUALS(get<c>(p),1);
 
     }
 
     void testVector(void) {
-        struct a_name {
-            static const char *name = "a";
-        }
-        struct a_name {
-            static const char *name = "b";
-        }
-        struct a_name {
-            static const char *name = "c";
-        }
-        Variable<Vect3d,a_name> a(Vect3d(1,1,1));
-        Variable<Vect3d,b_name> b(Vect3d(2,2,2));
-        Variable<Vect3d,c_name> c = a + b;
 
-        TS_ASSERT_EQUALS(c.value(),Vect3d(3,3,3));
-        TS_ASSERT_EQUALS(a*b.value(),Vect3d(2,2,2));
-        TS_ASSERT_EQUALS(a/b.value(),Vect3d(0.5,0.5,0.5);
+        ABORIA_VARIABLE(a,Vect3d,"a")
+        ABORIA_VARIABLE(b,Vect3i,"b")
 
-        c.set(Vect3d(3.6,3.6,3.6));
+        Particles<a,b,c>::value_type p;
 
-        TS_ASSERT_EQUALS(c.value(),Vect3d(3.6,3.6,3.6));
+        set<a>(p,Vect3d(1.1,1.2,1.3);
+        set<a>(p,Vect3d(1,2,3);
 
-        c = Vect3d(3.6,3.6,3.6);
+        TS_ASSERT_EQUALS(get<a>(p),Vect3d(1.1,1.2,1.3));
+        TS_ASSERT_EQUALS(get<b>(p),Vect3d(1,2,3));
 
-        TS_ASSERT_EQUALS(c.value(),Vect3d(3.6,3.6,3.6));
+        get<a>(p) = Vect3d(2.1,2.2,2.3);
+        get<a>(p) = Vect3d(2,3,4);
 
+        TS_ASSERT_EQUALS(get<a>(p),Vect3d(2.1,2.2,2.3));
+        TS_ASSERT_EQUALS(get<b>(p),Vect3d(2,3,4));
     }
-
-    void testMacro(void) {
-        ABORIA_VARIABLE(a_type,double,"a")
-        ABORIA_VARIABLE(b_type,double,"b")
-        ABORIA_VARIABLE(c_type,double,"c")
-
-        a_type a(1);
-        b_type b(2.5);
-        c_type c = a + b;
-
-        TS_ASSERT_EQUALS(c.value(),3.6);
-        TS_ASSERT_EQUALS(a*b.value(),2.5);
-        TS_ASSERT_EQUALS(a/b.value(),0.4);
-
-        c.set(3.6);
-
-        TS_ASSERT_EQUALS(c.value(),3.6);
-
-        c = 3.6;
-
-        TS_ASSERT_EQUALS(c.value(),3.6);
-
-    }
-
 
 };
 
