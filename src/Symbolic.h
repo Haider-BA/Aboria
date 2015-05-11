@@ -290,18 +290,18 @@ struct DataVectorGrammar
 			{};
 
 
-			template<typename Expr, typename I, typename ParticlesTypeOther>
-			struct eval<Expr, proto::tag::terminal, DataVector<I,ParticlesTypeOther> >
+			template<typename Expr, typename T, typename ParticlesTypeOther>
+			struct eval<Expr, proto::tag::terminal, DataVector<T,ParticlesTypeOther> >
 			{
 				BOOST_MPL_ASSERT(( boost::type_traits::ice_or<
 										boost::is_same< ParticlesTypeOther,ParticlesType1 >::value
 									  , boost::is_same< ParticlesTypeOther,ParticlesType2 >::value
 										>));
-				typedef typename Elem<I::value,ParticlesTypeOther>::type result_type;
+				typedef typename T::value_type result_type;
 
 				result_type operator ()(Expr &expr, TwoParticleCtx const &ctx) const
 				{
-					return Elem<I::value,ParticlesTypeOther>::get(ctx.particle1_);
+					return get<T>(ctx.particle1_);
 				}
 			};
 
@@ -347,16 +347,16 @@ struct ParticleCtx
 
 
 			// Handle vector terminals here...
-			template<typename Expr, typename I, typename ParticlesType2>
-			struct eval<Expr, proto::tag::terminal, DataVector<I,ParticlesType2> >
+			template<typename Expr, typename T, typename ParticlesType2>
+			struct eval<Expr, proto::tag::terminal, DataVector<T,ParticlesType2> >
 			{
-				typedef typename Elem<I::value,ParticlesType2>::type result_type;
+				typedef typename T::value_type result_type;
 
 				BOOST_MPL_ASSERT(( boost::is_same< ParticlesType,ParticlesType2 > ));
 
 				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
 				{
-					return Elem<I::value,ParticlesType2>::get(ctx.particle_);
+					return get<T>(ctx.particle_);
 				}
 			};
 
@@ -532,21 +532,22 @@ struct Dx
     : proto::terminal<dx_>::type {};
 
 
-template<typename I, typename ParticlesType>
+template<typename T, typename ParticlesType>
 struct DataVectorSymbolic
-	: DataVectorExpr<typename proto::terminal<DataVector<I,ParticlesType> >::type> {
+	: DataVectorExpr<typename proto::terminal<DataVector<T,ParticlesType> >::type> {
 
-	typedef typename proto::terminal<DataVector<I,ParticlesType> >::type expr_type;
+	typedef typename proto::terminal<DataVector<T,ParticlesType> >::type expr_type;
 	typedef typename ParticlesType::value_type particle_type;
+	typedef typename T::value_type value_type;
 
 	explicit DataVectorSymbolic(ParticlesType &p)
-	: DataVectorExpr<expr_type>( expr_type::make(DataVector<I,ParticlesType>(p)) )
+	: DataVectorExpr<expr_type>( expr_type::make(DataVector<T,ParticlesType>(p)) )
 	  {}
 
 
 	template< typename Expr >
 	DataVectorSymbolic &operator =(Expr const & expr) {
-        BOOST_MPL_ASSERT_NOT(( boost::is_same<I,mpl::int_<ID> > ));
+        BOOST_MPL_ASSERT_NOT(( boost::is_same<T,id > ));
 		return this->assign(proto::as_expr<DataVectorDomain>(expr));
 	}
 
@@ -557,9 +558,9 @@ private:
 	{
 		ParticlesType &particles = proto::value(*this).get_particles();
 		std::for_each(particles.begin(),particles.end(),[&expr](particle_type& i) {
-			Elem<I::value,ParticlesType>::set(i,expr.template eval<ParticlesType>(i));
+			set<T>(i,expr.template eval<ParticlesType>(i));
 		});
-        if (I::value == POSITION) {
+        if (boost::is_same<T,position>::value) {
             particles.update_positions();
         }
 		return *this;
@@ -568,9 +569,9 @@ private:
 
 
 
-template<int I, typename ParticlesType>
-DataVectorSymbolic<mpl::int_<I>,ParticlesType> get_vector(ParticlesType &p) {
-	return DataVectorSymbolic<mpl::int_<I>,ParticlesType>(p);
+template<typename T, typename ParticlesType>
+DataVectorSymbolic<T,ParticlesType> get_vector(ParticlesType &p) {
+	return DataVectorSymbolic<T,ParticlesType>(p);
 }
 
 }

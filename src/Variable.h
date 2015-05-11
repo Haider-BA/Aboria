@@ -8,19 +8,21 @@
 #ifndef VARIABLE_H_ 
 #define VARIABLE_H_ 
 
+#include <boost/preprocessor/cat.hpp>
+
 namespace Aboria {
 
 template<typename T, typename NAME>
-class Variable {
-    static const char *name = NAME::name;
+struct Variable {
+    const char *name = NAME::name;
     typedef T value_type;
 };
 
-#define ABORIA_VARIABLE(NAME,DATA_TYPE,NAME_STRING)        \
-        struct NAME_description {                          \
-            static const char *name = NAME_STRING;         \
-        }                                                  \
-        typedef Variable<DATA_TYPE,NAME_description> NAME; \
+#define ABORIA_VARIABLE(NAME,DATA_TYPE,NAME_STRING)      \
+    struct BOOST_PP_CAT(NAME, description) {                            \
+    	const char *name = NAME_STRING; \
+    };                                                   \
+    typedef Variable<DATA_TYPE,BOOST_PP_CAT(NAME, description)> NAME;   \
 
 ABORIA_VARIABLE(position,Vect3d,"position")
 ABORIA_VARIABLE(alive,bool,"is alive")

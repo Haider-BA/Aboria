@@ -33,11 +33,16 @@
 //#include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/counting_iterator.hpp>
 #include <boost/range/adaptors.hpp>
-#include <boost/fusion/algorithm.hpp>
-#include <boost/fusion/adapted/std_tuple.hpp>
+
 #include <boost/mpl/vector.hpp>
+#include <boost/mpl/find.hpp>
+#include <boost/mpl/for_each.hpp>
+#include <boost/mpl/range_c.hpp>
+namespace mpl = boost::mpl;
+
 #include "Zip.h"
 #include "Vector.h"
+#include "Variable.h"
 //#include "MyRandom.h"
 
 #ifndef HAVE_VTK
@@ -53,43 +58,32 @@
 namespace Aboria {
 
 
-template<typename T, typename PT>
-const typename PT::elem_by_type<T>::value_type & get(const PT::value_type & arg) const {
-    return arg.template get<T>();
-}
-template<typename T, typename PT>
-typename PT::elem_by_type<T>::value_type & get(PT::value_type & arg) {
-    return arg.template get<T>();
-}
-template<typename T, typename PT>
-void set(PT::value_type & arg, const typename PT::elem_by_type<T>::value_type & data) {
-    arg.template set(data);
-}
+
 
 
 template<typename ... TYPES> 
 class Particles {
-	template<typename T>
-	friend class Particles;
+//	template<typename T>
+//	friend class Particles;
 public:
 
-    typedef typename std::tuple<position::value_type,id::value_type,alive::value_type,TYPES::value_type...> tuple_type;
+    typedef typename std::tuple<position::value_type,id::value_type,alive::value_type,typename TYPES::value_type...> tuple_type;
 	typedef typename mpl::vector<position,id,alive,TYPES...> type_vector;
 
     template<typename T>
     struct elem_by_type {
         typedef T type;
         typedef typename T::value_type value_type;
-        typedef typename mpl::find<type_vector,T>::type iter; 
-        BOOST_MPL_ASSERT_NOT(( boost::is_same< mpl::end<type_vector>::type, iter::type > ))
-        static const unsigned int index = iter::pos::value;
+        typedef typename mpl::find<type_vector,T>::type iter;
+        BOOST_MPL_ASSERT_NOT(( boost::is_same< typename mpl::end<type_vector>::type, typename iter::type > ));
+        static const size_t index = iter::pos::value;
     };
     template<unsigned int I>
     struct elem_by_index {
         BOOST_MPL_ASSERT_RELATION( (mpl::size<type_vector>::type::value), >, I );
         typedef typename mpl::at<type_vector,mpl::int_<I> > type;
         typedef typename type::value_type value_type;
-        static const unsigned index = I;
+        static const size_t index = I;
     };
 
    	class value_type {
@@ -103,7 +97,7 @@ public:
 		}
 		value_type(const Vect3d &r):
 			m_uni(0,1),m_normal(0,1) {
-            set<position>(*this,r);
+            this->set<position>(r);
         }
 		~value_type() {
 
@@ -167,7 +161,7 @@ public:
 	typedef typename vector_type::const_iterator const_iterator;
 	struct get_pos {
 		const Vect3d& operator()(const value_type& i) const {
-			return get<position>(i);
+			return i.template get<position>();
 		}
 	};
 	typedef BucketSort<const_iterator,get_pos> NeighbourSearch_type;
@@ -225,9 +219,9 @@ public:
 		const int n = data.size();
 		for (int index = 0; index < n; ++index) {
 			value_type& i = data[index];
-			if (get<alive>(i) == false) {
+			if (i.template get<alive>() == false) {
 				i.deep_copy(*(data.cend()-1));
-				if (track_ids) id_to_index[get<id>(i)] = index;
+				if (track_ids) id_to_index[i.template get<id>()] = index;
 				data.pop_back();
 			}
 		}
@@ -240,7 +234,7 @@ public:
 	iterator erase (iterator i) {
 		if (i != end()-1) {
 			i->deep_copy(*(data.cend()-1));
-			if (track_ids) id_to_index[get<id>(*i)] = i-begin();
+			if (track_ids) id_to_index[i->template get<id>()] = i-begin();
 			if (searchable) neighbour_search.copy_points(i,end());
 
 		}
@@ -308,7 +302,7 @@ public:
 	template<typename F>
 	void reset_neighbour_search(const double length_scale, F f) {
 		std::for_each(begin(),end(),[&f](value_type& i) {
-			set<position>(i,f(i));
+			i.template set<position>(f(i));
 		});
 		neighbour_search.reset(neighbour_search.get_low(),neighbour_search.get_high(),length_scale,neighbour_search.get_periodic());
 		neighbour_search.embed_points(data.cbegin(),data.cend());
@@ -336,11 +330,11 @@ public:
 		if (searchable) neighbour_search.update_begin_and_end(data.cbegin(),data.cend());
 		const int index = data.size();
 		iterator i = end()-1;
-		set<position>(*i,get<position(val));
-		set<id>(i,this->next_id++);
-		i->generator.seed(get<id>(*i)*seed);
-		set<alive>(*i,true);
-		if (track_ids) id_to_index[get<id>(*i)] = index;
+		i->template set<position>(val.template get<position>());
+		i->template set<id>(this->next_id++);
+		i->generator.seed(i->template get<id>()*seed);
+		i->template set<alive>(true);
+		if (track_ids) id_to_index[i->template get<id>()] = index;
 		if (searchable) neighbour_search.add_point(i);
 	}
 
@@ -359,11 +353,11 @@ public:
 		if (searchable) neighbour_search.update_begin_and_end(data.cbegin(),data.cend());
 		int index = old_size;
 		for (auto i=data.begin()+old_size; i!=data.end();i++,index++) {
-			set<id>(*i,this->next_id++);
+			i->template set<id>(this->next_id++);
 			i->generator.seed(i->id*seed);
-			set<alive>(*i,true);
-			set<position(*i,f(*i));
-			if (track_ids) id_to_index[get<id>(*i)] = index;
+			i->template set<alive>(true);
+			i->template set<position>(f(*i));
+			if (track_ids) id_to_index[i->template get<id>()] = index;
 			if (searchable) neighbour_search.add_point(i);
 		}
 	}
@@ -374,6 +368,7 @@ public:
 				neighbour_search.end());
 	}
 
+	template<typename F>
 	void create_particles_cylinder(const Vect3d& min, const Vect3d& max, const int n, double dem_diameter, F f) {
 		int shift=0;
 		bool shiftz=false;
@@ -445,7 +440,7 @@ public:
 	template<typename F>
 	void update_positions(iterator b, iterator e, F f) {
 		std::for_each(b,e,[&f](value_type& i) {
-			set<position>(i,f(i));
+			i.template set<position>(f(i));
 		});
 		if (searchable) {
 			enforce_domain(neighbour_search.get_low(),neighbour_search.get_high(),neighbour_search.get_periodic());
@@ -455,7 +450,7 @@ public:
 	template<typename F>
 	void update_positions(F f) {
 		std::for_each(begin(),end(),[&f](value_type& i) {
-			set<position>(i,f(i));
+			i.template set<position>(f(i));
 		});
 		if (searchable) {
 			enforce_domain(neighbour_search.get_low(),neighbour_search.get_high(),neighbour_search.get_periodic());
@@ -505,11 +500,11 @@ public:
             typedef typename std::tuple_element<U::value,tuple_type>::type data_type;
             data_type &write_from_elem = std::get<U::value>(write_from);
             if (boost::is_same<data_type,Vect3d>::value) {
-                datas[state]->SetTuple3(index,write_from_elem[0],
+                datas[i]->SetTuple3(index,write_from_elem[0],
                                               write_from_elem[1],
                                               write_from_elem[2]);
             } else {
-			    datas[state]->SetValue(index,write_from_elem);
+			    datas[i]->SetValue(index,write_from_elem);
             }
         }
 
@@ -526,12 +521,12 @@ public:
             typedef typename std::tuple_element<U::value,tuple_type>::type data_type;
             data_type &read_into_elem = std::get<U::value>(read_into);
             if (boost::is_same<data_type,Vect3d>::value) {
-				double *data = datas[state]->GetTuple3(index);
+				double *data = datas[i]->GetTuple3(index);
                 read_into_elem[0] = data[0];
                 read_into_elem[1] = data[1];
                 read_into_elem[2] = data[2];
             } else {
-                read_into_elem = datas[state]->GetValue(index);
+                read_into_elem = datas[i]->GetValue(index);
             }
         }
 
@@ -541,33 +536,35 @@ public:
 	};
 	
     struct setup_datas_for_writing {
-		setup_datas_for_writing(size_t n, vtkSmartPointer<vtkFloatArray>* datas):
-			n(n),datas(datas){}
+		setup_datas_for_writing(size_t n, vtkSmartPointer<vtkFloatArray>* datas, vtkUnstructuredGrid *grid):
+			n(n),datas(datas),grid(grid){}
         template< typename U > void operator()(U i) {
-            std::string name = mpl::at<type_vector,U::value>::type::name;
+            std::string name = mpl::at<type_vector,typename U::value>::type::name;
             datas[i] = vtkFloatArray::SafeDownCast(grid->GetPointData()->GetArray(name.c_str()));
 			if (!datas[i]) {
 				datas[i] = vtkSmartPointer<vtkFloatArray>::New();
 				datas[i]->SetName(name.c_str());
 				grid->GetPointData()->AddArray(datas[i]);
 			}
-            if (boost::is_same<mpl::at<type_vector,U::value>::type::value_type, Vect3d>::value) {
-                datas[state]->SetNumberOfComponents(3);
+			typedef typename mpl::at<type_vector,typename U::value>::type::value_type data_type;
+            if (boost::is_same<data_type, Vect3d>::value) {
+                datas[i]->SetNumberOfComponents(3);
             } else {
-                datas[state]->SetNumberOfComponents(1);
+                datas[i]->SetNumberOfComponents(1);
             }
 			datas[i]->SetNumberOfTuples(n);
         }
 
         size_t n;
 		vtkSmartPointer<vtkFloatArray>* datas;
+		vtkUnstructuredGrid *grid;
     };
 
     struct setup_datas_for_reading {
-		setup_datas_for_reading(size_t n,vtkSmartPointer<vtkFloatArray>* datas):
-			n(n),datas(datas){}
+		setup_datas_for_reading(size_t n,vtkSmartPointer<vtkFloatArray>* datas,vtkUnstructuredGrid *grid):
+			n(n),datas(datas),grid(grid){}
         template< typename U > void operator()(U i) {
-            std::string name = mpl::at<type_vector,U::value>::type::name;
+            std::string name = mpl::at<type_vector,typename U::value>::type::name;
 			datas[i] = vtkFloatArray::SafeDownCast(grid->GetPointData()->GetArray(name.c_str()));
 			CHECK(datas[i],"No data array "<<name<<" in vtkUnstructuredGrid");
 			CHECK(datas[i]->GetNumberOfTuples()==n,"Data array "<<name<<" has size != id array. data size = "<<datas[i]->GetNumberOfTuples()<<". id size = "<<n);
@@ -575,6 +572,7 @@ public:
 
         size_t n;
 		vtkSmartPointer<vtkFloatArray>* datas;
+		vtkUnstructuredGrid *grid;
     };
 
 
@@ -603,7 +601,7 @@ public:
 
 		constexpr size_t dn = std::tuple_size<tuple_type>::value;
 		vtkSmartPointer<vtkFloatArray> datas[dn];
-        mpl::for_each<mpl::range_c<int,1,mpl::size<type_vector>::type::value> > (setup_datas_for_writing(n,datas));
+        mpl::for_each<mpl::range_c<int,1,mpl::size<type_vector>::type::value> > (setup_datas_for_writing(n,datas,grid));
 		points->SetNumberOfPoints(n);
 		cells->Reset();
 		cell_types->Reset();
@@ -612,7 +610,7 @@ public:
 		for(auto& i: *this) {
 			const int index = j++;
 			//std::cout <<"copying point at "<<i.get_position()<<" with id = "<<i.get_id()<<std::endl;
-            const Vect3d &r = get<position>(i);
+            const Vect3d &r = i.template get<position>();
 			points->SetPoint(index,r[0],r[1],r[2]);
 			cells->InsertNextCell(1);
 			cells->InsertCellPoint(index);
@@ -637,7 +635,7 @@ public:
 
 			const vtkIdType n = ids->GetSize();
 
-            mpl::for_each<mpl::range_c<int,1,mpl::size<type_vector>::type::value> > (setup_datas_for_reading(n,datas));
+            mpl::for_each<mpl::range_c<int,1,mpl::size<type_vector>::type::value> > (setup_datas_for_reading(n,datas,grid));
 
 			this->clear();
 
@@ -655,18 +653,18 @@ private:
 
 	void enforce_domain(const Vect3d& low, const Vect3d& high, const Vect3b& periodic, const bool remove_deleted_particles = false) {
 		std::for_each(begin(),end(),[low,high,periodic](value_type& i) {
-            Vect3d &r = get<position>(i);
+            Vect3d &r = i.template get<position>();
 			for (int d = 0; d < 3; ++d) {
 				if (periodic[d]) {
 					while (r[d]<low[d]) {
 						r[d] += (high[d]-low[d]);
 					}
-					while (get<position>(i)[d]>=high[d]) {
+					while (r[d]>=high[d]) {
 						r[d] -= (high[d]-low[d]);
 					}
 				} else {
 					if ((r[d]<low[d]) || (r[d]>=high[d])) {
-						set<alive>(i,false);
+						i.template set<alive>(false);
                     }
 				}
 			}
@@ -675,9 +673,9 @@ private:
 			const int n = data.size();
 			for (int index = 0; index < n; ++index) {
 				value_type& i = data[index];
-				if (get<alive>(i)==false) {
+				if (i.template get<alive>()==false) {
 					i.deep_copy(*(data.cend()-1));
-					if (track_ids) id_to_index[get<id>(i)] = index;
+					if (track_ids) id_to_index[i.template get<id>()] = index;
 					data.pop_back();
 				}
 			}
@@ -697,6 +695,18 @@ private:
 };
 
 
+template<typename T, typename PT>
+const typename T::value_type & get(const typename PT::value_type & arg) {
+    return arg.template get<T>();
+}
+template<typename T, typename PT>
+typename T::value_type & get(typename PT::value_type & arg) {
+    return arg.template get<T>();
+}
+template<typename T, typename PT>
+void set(typename PT::value_type & arg, const typename T::value_type & data) {
+    arg.template set(data);
+}
 
 
 }
