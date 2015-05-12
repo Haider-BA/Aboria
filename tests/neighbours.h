@@ -82,7 +82,7 @@ public:
     	auto tpl = test.get_neighbours(Vect3d(1.1*diameter,0,0));
     	TS_ASSERT_EQUALS(tpl.size(),1);
     	const Test_type::value_type &pfound = std::get<0>(*tpl.begin());
-    	TS_ASSERT_EQUALS(pfound.get_id(),test[1].get_id());
+    	TS_ASSERT_EQUALS(get<id>(pfound),get<id>(test[1]));
 
     	tpl = test.get_neighbours(Vect3d(0.9*diameter,0,0));
     	TS_ASSERT_EQUALS(tpl.size(),2);

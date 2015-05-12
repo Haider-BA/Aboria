@@ -124,8 +124,9 @@ public:
 		const typename elem_by_type<T>::value_type & get() const {
 			return std::get<elem_by_type<T>::index>(m_data);
 		}
+
 		template<typename T>
-		const typename elem_by_type<T>::value_type & get() {
+		typename elem_by_type<T>::value_type & get() {
 			return std::get<elem_by_type<T>::index>(m_data);
 		}
 
@@ -332,7 +333,7 @@ public:
 		iterator i = end()-1;
 		i->template set<position>(val.template get<position>());
 		i->template set<id>(this->next_id++);
-		i->generator.seed(i->template get<id>()*seed);
+		i->m_generator.seed(i->template get<id>()*seed);
 		i->template set<alive>(true);
 		if (track_ids) id_to_index[i->template get<id>()] = index;
 		if (searchable) neighbour_search.add_point(i);
@@ -354,7 +355,7 @@ public:
 		int index = old_size;
 		for (auto i=data.begin()+old_size; i!=data.end();i++,index++) {
 			i->template set<id>(this->next_id++);
-			i->generator.seed(i->id*seed);
+			i->m_generator.seed(i->template get<id>()*seed);
 			i->template set<alive>(true);
 			i->template set<position>(f(*i));
 			if (track_ids) id_to_index[i->template get<id>()] = index;
@@ -695,17 +696,17 @@ private:
 };
 
 
-template<typename T, typename PT>
-const typename T::value_type & get(const typename PT::value_type & arg) {
+template<typename T, typename VT>
+const typename T::value_type & get(const VT & arg) {
     return arg.template get<T>();
 }
-template<typename T, typename PT>
-typename T::value_type & get(typename PT::value_type & arg) {
+template<typename T, typename VT>
+typename T::value_type & get(VT & arg) {
     return arg.template get<T>();
 }
-template<typename T, typename PT>
-void set(typename PT::value_type & arg, const typename T::value_type & data) {
-    arg.template set(data);
+template<typename T, typename VT>
+void set(VT & arg, const typename T::value_type & data) {
+    arg.template set<T>(data);
 }
 
 

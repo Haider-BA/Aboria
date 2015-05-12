@@ -199,9 +199,8 @@ struct DataVectorGrammar
 
   struct LabelGrammar
     : proto::or_<
-        proto::when< proto::terminal<Particles<_> >
+        proto::when< proto::terminal<_>
                     , proto::_value >
-        , proto::terminal<label_<_> >
         , proto::when< 
                     _ 
     				, LabelGrammar(proto::_right) >
@@ -389,15 +388,15 @@ struct ParticleCtx
 					child1_type conditional = proto::child_c<1>(expr);
 					child2_type arg = proto::child_c<2>(expr);
 					result_type sum = 0;
-                    std::cout << "doing sum for particle "<<ctx.particle_.get_id()<<std::endl;
-					for (auto i: particlesb.get_neighbours(ctx.particle_.get_position())) {
-                        std::cout << "doing neighbour "<<std::get<0>(i).get_id()<<std::endl;
+                    //std::cout << "doing sum for particle "<<ctx.particle_.get_id()<<std::endl;
+					for (auto i: particlesb.get_neighbours(get<position>(ctx.particle_))) {
+                        //std::cout << "doing neighbour "<<std::get<0>(i).get_id()<<std::endl;
 						TwoParticleCtx<ParticlesType,particles_type> ctx2(std::get<1>(i),std::get<0>(i),ctx.particle_);
 						if (proto::eval(conditional,ctx2)) {
-                            std::cout <<"conditional is true"<<std::endl;
+                            //std::cout <<"conditional is true"<<std::endl;
 							sum += proto::eval(arg,ctx2);
 						} else {
-                            std::cout <<"conditional is true"<<std::endl;
+                            //std::cout <<"conditional is true"<<std::endl;
                         }
 					}
 					return sum;
