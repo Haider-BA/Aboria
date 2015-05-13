@@ -171,6 +171,15 @@ Vector<T,N> pow(Vector<T,N> arg, EXP_T exponent) {
 	return arg.pow(exponent);
 }
 
+template<typename T1,typename T2,int N> 
+bool operator ==(const Vector<T1,N> &arg1, const Vector<T2,N> &arg2) { 
+    bool ret = true; 
+    for (int i = 0; i < N; ++i) { 
+        ret &= arg1[i] == arg2[i]; 
+    } 
+    return ret; 
+} 
+
 #define OPERATOR(the_op) \
 		template<typename T1,typename T2,int N> \
 				Vector<double,N> operator the_op(const Vector<T1,N> &arg1, const Vector<T2,N> &arg2) { \

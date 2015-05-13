@@ -54,10 +54,9 @@ public:
         get<b>(p) = 2.3;
         get<c>(p) = 2;
 
-
-        TS_ASSERT_EQUALS(get<a>(p),1.2);
-        TS_ASSERT_EQUALS(get<b>(p),1.3);
-        TS_ASSERT_EQUALS(get<c>(p),1);
+        TS_ASSERT_EQUALS(get<a>(p),2.2);
+        TS_ASSERT_EQUALS(get<b>(p),2.3);
+        TS_ASSERT_EQUALS(get<c>(p),2);
 
     }
 
@@ -66,10 +65,10 @@ public:
         ABORIA_VARIABLE(a,Vect3d,"a")
         ABORIA_VARIABLE(b,Vect3i,"b")
 
-        Particles<a,b,c>::value_type p;
+        Particles<a,b>::value_type p;
 
-        set<a>(p,Vect3d(1.1,1.2,1.3);
-        set<a>(p,Vect3d(1,2,3);
+        set<a>(p,Vect3d(1.1,1.2,1.3));
+        set<a>(p,Vect3d(1,2,3));
 
         TS_ASSERT_EQUALS(get<a>(p),Vect3d(1.1,1.2,1.3));
         TS_ASSERT_EQUALS(get<b>(p),Vect3d(1,2,3));
