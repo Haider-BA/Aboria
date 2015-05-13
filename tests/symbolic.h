@@ -145,9 +145,10 @@ public:
 
 //       	old_posiiton   = position;
 //       	for() {
-//
-//       	position = position  + sqrt(2*D*dt)*normal() + dt*interpolate(position, drift);
-//       	position = any(particles, norm_(dx()) < diameter, reflect(ellipsoid(positionb)))
+//          ellipsoids = ellipsoid(position)
+//          new_position = constrain(position + 
+//       	position = position + sqrt(2*D*dt)*normal() + dt*interpolate(position, drift);
+//       	position = any(particles, norm_(dx()) < diameter, reflect(position,new_position,ellipsoids))
 //       	}
 //       	dx =position-old_position;
 //       	msd = dot(dx,dx);
@@ -159,7 +160,7 @@ public:
     	TS_ASSERT_EQUALS(get<scalar>(particles[0]),2);
     	TS_ASSERT_EQUALS(get<scalar>(particles[1]),2);
 
-       }
+    }
 
 };
 
