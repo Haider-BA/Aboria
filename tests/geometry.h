@@ -62,6 +62,54 @@ public:
 		TS_ASSERT_DELTA(p8[1],0.3,tol);
 		TS_ASSERT_DELTA(p8[2],0,tol);
 	}
+
+    void testReflectOnceSymbolic(void) {
+		const double tol = GEOMETRY_TOLERANCE;
+
+        ABORIA_VARIABLE(radius,double,"radius")
+    	typedef Particles<radius> ParticlesType;
+       	ParticlesType particles;
+       	auto position_ = get_vector<position>(particles);
+       	auto radius_ = get_vector<radius>(particles);
+       	particles.push_back(Vect3d(0,0,0));
+
+
+		auto sp_centre = Sphere::New(Vect3d(0,0,0),0.5,false);
+		Vect3d p1(0.4,0,0);
+		Vect3d p2(0.6,0,0);
+        position_ =  reflect_(p1,p2,sp_centre);
+		TS_ASSERT_DELTA(get<position>(particles[0])[0],0.4,tol);
+		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
+		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
+
+        position_ = Vect3d(0,0,0);
+        position_ =  reflect_(Vect3d(0,0.4,0),Vect3d(0,0.7,0),sphere_(position_,0.5));
+		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
+		TS_ASSERT_DELTA(get<position>(particles[0])[1],0.3,tol);
+		TS_ASSERT_DELTA(get<position>(particles[0])[2],0,tol);
+
+        position_ = Vect3d(0,0,0);
+        position_ =  reflect_(Vect3d(0,0.4,0),Vect3d(0,0.7,0),sphere_(position_,0.3));
+		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
+		TS_ASSERT_DELTA(get<position>(particles[0])[1],0,tol);
+		TS_ASSERT_DELTA(get<position>(particles[0])[2],0,tol);
+
+        position_ = Vect3d(0,0,0);
+        radius_ = 0.5;
+        position_ =  reflect_(Vect3d(0,0.4,0),Vect3d(0,0.7,0),sphere_(position_,radius_));
+		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
+		TS_ASSERT_DELTA(get<position>(particles[0])[1],0.3,tol);
+		TS_ASSERT_DELTA(get<position>(particles[0])[2],0,tol);
+
+        position_ = Vect3d(0,0,0);
+        radius_ = 0.3;
+        position_ =  reflect_(Vect3d(0,0.4,0),Vect3d(0,0.7,0),sphere_(position_,radius_));
+		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
+		TS_ASSERT_DELTA(get<position>(particles[0])[1],0,tol);
+		TS_ASSERT_DELTA(get<position>(particles[0])[2],0,tol);
+
+	}
+
 	void testSphereIsIn(void) {
 		auto sp_centre = Sphere::New(Vect3d(0,0,0),0.5,true);
 		auto sp_off_centre = Sphere::New(Vect3d(1.0,0,0),0.5,false);
