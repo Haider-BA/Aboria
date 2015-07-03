@@ -82,31 +82,38 @@ public:
 		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
 		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
 
-        position_ = Vect3d(0,0,0);
-        position_ =  reflect_(Vect3d(0,0.4,0),Vect3d(0,0.7,0),sphere_(position_,0.5));
+        position_ = Vect3d(0,-0.4,0);
+        position_ = Vect3d(0,0.3,0) | sphere_(position_,0.5);
 		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
 		TS_ASSERT_DELTA(get<position>(particles[0])[1],0.3,tol);
 		TS_ASSERT_DELTA(get<position>(particles[0])[2],0,tol);
 
-        position_ = Vect3d(0,0,0);
-        position_ =  reflect_(Vect3d(0,0.4,0),Vect3d(0,0.7,0),sphere_(position_,0.3));
+        position_ = Vect3d(0,-0.4,0);
+        position_ = Vect3d(0,0.3,0) | sphere_(position_,0.3);
 		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
 		TS_ASSERT_DELTA(get<position>(particles[0])[1],0,tol);
 		TS_ASSERT_DELTA(get<position>(particles[0])[2],0,tol);
 
-        position_ = Vect3d(0,0,0);
+        position_ = Vect3d(0,-0.4,0);
         radius_ = 0.5;
-        position_ =  reflect_(Vect3d(0,0.4,0),Vect3d(0,0.7,0),sphere_(position_,radius_));
+        position_ = Vect3d(0,0.3,0) | sphere_(position_,radius_);
 		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
 		TS_ASSERT_DELTA(get<position>(particles[0])[1],0.3,tol);
 		TS_ASSERT_DELTA(get<position>(particles[0])[2],0,tol);
 
-        position_ = Vect3d(0,0,0);
+        position_ = Vect3d(0,-0.4,0);
         radius_ = 0.3;
+        position_ = Vect3d(0,0.3,0) | sphere_(position_,radius_);
         position_ =  reflect_(Vect3d(0,0.4,0),Vect3d(0,0.7,0),sphere_(position_,radius_));
 		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
 		TS_ASSERT_DELTA(get<position>(particles[0])[1],0,tol);
 		TS_ASSERT_DELTA(get<position>(particles[0])[2],0,tol);
+
+
+       	ParticlesType point_particles;
+       	auto point_position_ = get_vector<position>(point_particles);
+       	auto point_radius_ = get_vector<radius>(point_particles);
+       	point_particles.push_back(Vect3d(0,0,0));
 
 	}
 
