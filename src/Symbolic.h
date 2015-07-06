@@ -64,7 +64,7 @@ struct label_ {
 
 namespace tag {
 		struct sum_;
-		struct any_;
+		struct first_;
 	}
 
 template<typename Expr>

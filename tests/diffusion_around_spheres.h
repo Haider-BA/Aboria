@@ -50,28 +50,48 @@ public:
 		Particles<d_position> points;
 		std::uniform_real_distribution<double> uni(-L,L);
 		for (int i = 0; i < 100; ++i) {
-			Vect3d random_point(uni(generator),uni(generator),uni(generator));
-			if (spheres.get_neighbours(random_point).size() == 0) {
-				points.push_back(random_point);
-			}
+			points.push_back(Vect3d(uni(generator),uni(generator),uni(generator)));
 		}
 
 		auto spheres_position = get_vector<position>(spheres);
 		auto spheres_radius = get_vector<radius>(spheres);
 
-		auto points_position = get_vector<position>(spheres);
-		auto points_d_position = get_vector<d_position>(spheres);
+		auto points_position = get_vector<position>(points);
+		auto points_d_position = get_vector<d_position>(points);
+		auto points_alive = get_vector<alive>(points);
+
 
 		Label<0> a;
 		Label<1> b;
 		Dx dx;
 		Normal N;
 
+		/*
+		 * Kill any points within spheres
+		 */
+		points_alive = first_(b = spheres, norm_(dx) < spheres_radius[b],false,true);
+
+		/*
+		 * Check no points within spheres
+		 */
+		for(auto i: points) {
+			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(0,0,0)), 1.0);
+			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(5,0,0)), 2.0);
+			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(0,-5,0)), 1.5);
+			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(0,0,5)), 1.0);
+		}
+
+		/*
+		 * Diffusion step for points and reflect off spheres
+		 */
 		for (int i = 0; i < timesteps; ++i) {
 			points_d_position = std::sqrt(2*D*dt)*N | spheres_(b=spheres,dx,spheres_radius[b]);
 			points_position = points_position + points_d_position;
 		}
 
+		/*
+		 * Check still no points within spheres
+		 */
 		for(auto i: points) {
 			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(0,0,0)), 1.0);
 			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(5,0,0)), 2.0);

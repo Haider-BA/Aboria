@@ -152,7 +152,7 @@ namespace Aboria {
 
 
     ABORIA_TAGGED_FUNCTION(tag::sum_);
-    ABORIA_TAGGED_FUNCTION(tag::any_);
+    ABORIA_TAGGED_FUNCTION(tag::first_);
 
 
 #endif /* FUNCTIONS_H_ */
