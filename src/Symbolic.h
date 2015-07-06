@@ -383,7 +383,7 @@ struct ParticleCtx
 						if (proto::eval(conditional,ctx2)) {
                             //std::cout <<"conditional is true"<<std::endl;
                             //std::cout <<"result of evaluating expression is "<<proto::eval(arg,ctx2)<<std::endl;
-							sum += proto::eval(arg,ctx2);
+							result = proto::eval(arg,ctx2);
 						} else {
                             //std::cout <<"conditional is true"<<std::endl;
                         }
