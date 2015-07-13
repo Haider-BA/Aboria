@@ -65,6 +65,7 @@ struct label_ {
 namespace tag {
 		struct sum_;
 		struct first_;
+		struct geometries_;
 	}
 
 template<typename Expr>
@@ -302,6 +303,26 @@ struct ParticleCtx
 				}
 			};
 
+			// Handle bitwise or (reflections) here
+			template<typename Expr, typename Expr0>
+			struct eval<Expr, proto::tag::bitwise_or, Expr0>
+			{
+				typedef Vect3d result_type;
+
+				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
+				{
+					if( proto::matches< proto::result_of::child_c<Expr,0>::type, GeometryDomain >::value ) {
+						Vect3d result = to;
+						            reflect_once(from,result,geometry);
+									return to;
+					} else {
+
+					}
+					return proto::child_c<0>(expr).eval(ctx.particle_);
+				}
+			};
+
+
 
 
 			// Handle sums here...
@@ -311,6 +332,8 @@ struct ParticleCtx
 				typedef typename proto::result_of::child_c<Expr,0>::type child0_type;
 				typedef typename proto::result_of::child_c<Expr,1>::type child1_type;
 				typedef typename proto::result_of::child_c<Expr,2>::type child2_type;
+				typedef typename proto::result_of::child_c<Expr,3>::type child3_type;
+
 
 				//BOOST_MPL_ASSERT(( proto::matches< child0_type, LabelGrammar<1> > ));
 
@@ -330,7 +353,8 @@ struct ParticleCtx
 					particles_type_ref particlesb = LabelGrammar()(proto::child_c<0>(expr));
 					child1_type conditional = proto::child_c<1>(expr);
 					child2_type arg = proto::child_c<2>(expr);
-					result_type sum = 0;
+					child3_type init = proto::child_c<3>(expr);
+					result_type sum = proto::eval(init,ctx2);
                     //std::cout << "doing sum for particle "<<get<id>(ctx.particle_)<<std::endl;
 					for (auto i: particlesb.get_neighbours(get<position>(ctx.particle_))) {
                         //std::cout << "doing neighbour "<<get<id>(std::get<0>(i))<<std::endl;
@@ -349,18 +373,20 @@ struct ParticleCtx
 				}
 				};
 
-            // Handle any here...
+            // Handle first_ here...
 			template<typename Expr, typename Arg0>
-			struct eval<Expr, tag::any_, Arg0 >
+			struct eval<Expr, tag::first_, Arg0 >
 			{
 				typedef typename proto::result_of::child_c<Expr,0>::type child0_type;
 				typedef typename proto::result_of::child_c<Expr,1>::type child1_type;
 				typedef typename proto::result_of::child_c<Expr,2>::type child2_type;
+				typedef typename proto::result_of::child_c<Expr,3>::type child3_type;
+
 
 				//BOOST_MPL_ASSERT(( proto::matches< child0_type, LabelGrammar<1> > ));
 
 				typedef typename boost::result_of<LabelGrammar(child0_type)>::type particles_type_ref;
-                typedef typename std::remove_reference<particles_type_ref>::type particles_type;
+				typedef typename std::remove_reference<particles_type_ref>::type particles_type;
 				//typedef typename Expr::proto_child0::proto_child1::proto_value particles_type;
 				typedef typename proto::result_of::eval<child1_type const, TwoParticleCtx<ParticlesType,particles_type> const>::type conditional_type;
 
@@ -375,24 +401,25 @@ struct ParticleCtx
 					particles_type_ref particlesb = LabelGrammar()(proto::child_c<0>(expr));
 					child1_type conditional = proto::child_c<1>(expr);
 					child2_type arg = proto::child_c<2>(expr);
-					result_type result = 0;
-                    //std::cout << "doing sum for particle "<<get<id>(ctx.particle_)<<std::endl;
+					child3_type init = proto::child_c<3>(expr);
+
+					result_type sum = proto::eval(init,ctx2);
+					//std::cout << "doing sum for particle "<<get<id>(ctx.particle_)<<std::endl;
 					for (auto i: particlesb.get_neighbours(get<position>(ctx.particle_))) {
-                        //std::cout << "doing neighbour "<<get<id>(std::get<0>(i))<<std::endl;
+						//std::cout << "doing neighbour "<<get<id>(std::get<0>(i))<<std::endl;
 						TwoParticleCtx<ParticlesType,particles_type> ctx2(std::get<1>(i),ctx.particle_,std::get<0>(i));
 						if (proto::eval(conditional,ctx2)) {
-                            //std::cout <<"conditional is true"<<std::endl;
-                            //std::cout <<"result of evaluating expression is "<<proto::eval(arg,ctx2)<<std::endl;
-							result = proto::eval(arg,ctx2);
-						} else {
-                            //std::cout <<"conditional is true"<<std::endl;
-                        }
+							//std::cout <<"conditional is true"<<std::endl;
+							//std::cout <<"result of evaluating expression is "<<proto::eval(arg,ctx2)<<std::endl;
+							sum = proto::eval(arg,ctx2);
+							break;
+						}
 					}
-                    //std::cout <<"sum is "<<sum<<std::endl;
+					//std::cout <<"sum is "<<sum<<std::endl;
 
 					return sum;
 				}
-				};
+			};
 
 
 

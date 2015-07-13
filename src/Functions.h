@@ -34,10 +34,10 @@ namespace Aboria {
 
 
 
-#define ABORIA_UNARY_FUNCTION(function_name, function_to_wrap,  domain) \
+#define ABORIA_UNARY_FUNCTION(function_name, function_to_wrap,  domain, tag) \
     template<typename Expr> \
 	typename proto::result_of::make_expr<\
-	proto::tag::function    \
+	tag     \
 	, domain \
 	, function_to_wrap     \
 	, Expr const &    \
@@ -50,10 +50,10 @@ namespace Aboria {
 		);  \
 	}\
 
-#define ABORIA_BINARY_FUNCTION(function_name, function_to_wrap,  domain) \
+#define ABORIA_BINARY_FUNCTION(function_name, function_to_wrap,  domain, tag) \
     template<typename Expr1, typename Expr2> \
 	typename proto::result_of::make_expr<\
-	proto::tag::function    \
+	tag    \
 	, domain \
 	, function_to_wrap     \
 	, Expr1 const &    \
@@ -68,10 +68,10 @@ namespace Aboria {
 		);  \
 	}\
 
-#define ABORIA_TERNARY_FUNCTION(function_name, function_to_wrap,  domain) \
+#define ABORIA_TERNARY_FUNCTION(function_name, function_to_wrap,  domain, tag) \
     template<typename Expr1, typename Expr2, typename Expr3> \
 	typename proto::result_of::make_expr<\
-	proto::tag::function    \
+	tag   \
 	, domain \
 	, function_to_wrap     \
 	, Expr1 const &    \
@@ -88,23 +88,26 @@ namespace Aboria {
 		);  \
 	}\
 
-#define ABORIA_TAGGED_FUNCTION(tag) \
-    template<typename LABEL, typename CONDITIONAL, typename ARG> \
+#define ABORIA_TAGGED_FUNCTION(name,tag) \
+    template<typename LABEL, typename CONDITIONAL, typename ARG, typename INIT> \
 	typename proto::result_of::make_expr< \
 	tag , \
 	DataVectorDomain, \
 	LABEL const &, \
 	CONDITIONAL const &, \
-	ARG const & \
+	ARG const &, \
+	INIT const & \
 	>::type const \
-	sum_(LABEL const & label,CONDITIONAL const & conditional, ARG const & arg) \
+	name(LABEL const & label,CONDITIONAL const & conditional, ARG const & arg, INIT const & init) \
 	{ \
 		return proto::make_expr< tag , DataVectorDomain>( \
 				boost::ref(label), \
 				boost::ref(conditional), \
-				boost::ref(arg) \
+				boost::ref(arg), \
+				boost::ref(init) \
 		); \
 		} \
+
 
 
 
@@ -120,6 +123,7 @@ namespace Aboria {
 
     ABORIA_UNARY_FUNCTION(norm_, norm_fun, DataVectorDomain);
 
+
 	struct sphere_fun
 	{
 		typedef Sphere result_type;
@@ -131,7 +135,8 @@ namespace Aboria {
 	};
 
 
-    ABORIA_TERNARY_FUNCTION(sphere_, sphere_fun, GeometryDomain);
+    ABORIA_TERNARY_FUNCTION(sphere_, sphere_fun, GeometryDomain, proto::tag::function );
+    ABORIA_TERNARY_FUNCTION(sphere_, sphere_fun, GeometryDomain, tag::geometries_ );
 
 	
     template< typename T >
@@ -147,12 +152,12 @@ namespace Aboria {
 		}
 	};
 
-    ABORIA_TERNARY_FUNCTION(reflect_, reflect_fun<Expr3>, DataVectorDomain);
+    ABORIA_TERNARY_FUNCTION(reflect_, reflect_fun<Expr3>, DataVectorDomain, proto::tag::function );
 
 
 
-    ABORIA_TAGGED_FUNCTION(tag::sum_);
-    ABORIA_TAGGED_FUNCTION(tag::first_);
+    ABORIA_TAGGED_FUNCTION(sum_,tag::sum_);
+    ABORIA_TAGGED_FUNCTION(first_,tag::first_);
 
 
 #endif /* FUNCTIONS_H_ */
