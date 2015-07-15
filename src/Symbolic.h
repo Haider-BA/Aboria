@@ -144,14 +144,22 @@ struct DataVectorGrammar
                        , proto::_value >
      {};
 
-    struct GeometryGrammar
+    struct SphereGrammar
        : proto::function<
              proto::terminal< sphere_fun >, 
              DataVectorGrammar, DataVectorGrammar, DataVectorGrammar> 
              
     {};
 
+    struct SpheresGrammar
+              : proto::function<
+                    proto::terminal< sphere_fun >,
+                    DataVectorGrammar, DataVectorGrammar, DataVectorGrammar>
+
+           {};
+
   	    struct dx_ {};
+  	  struct normal_ {};
 
 
   	  template<typename ParticlesType>
@@ -241,6 +249,18 @@ struct DataVectorGrammar
 				}
 			};
 
+			// Handle normal terminals here...
+			template<typename Expr>
+			struct eval<Expr, proto::tag::terminal, normal_ >
+			{
+				typedef const Vect3d& result_type;
+
+				result_type operator ()(Expr &expr, TwoParticleCtx const &ctx) const
+				{
+					return ctx.particle1_.rand_normal();
+				}
+			};
+
 			const typename ParticlesType1::value_type& particle1_;
 			const typename ParticlesType2::value_type& particle2_;
 			const Vect3d& dx_;
@@ -283,6 +303,18 @@ struct ParticleCtx
 				}
 			};
 
+			// Handle normal terminals here...
+			template<typename Expr>
+			struct eval<Expr, proto::tag::terminal, normal_ >
+			{
+				typedef const Vect3d& result_type;
+
+				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
+				{
+					return ctx.particle_.rand_normal();
+				}
+			};
+
 			// Handle subscripts here...
 			template<typename Expr, typename ExprToSubscript>
 			struct eval<Expr, proto::tag::subscript, ExprToSubscript>
@@ -311,11 +343,13 @@ struct ParticleCtx
 
 				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
 				{
-					if( proto::matches< proto::result_of::child_c<Expr,0>::type, GeometryDomain >::value ) {
-						Vect3d result = to;
-						            reflect_once(from,result,geometry);
-									return to;
+					Vect3d result;
+					if( proto::matches< proto::result_of::child_c<Expr,0>::type, GeometryGrammar >::value ) {
+						result = proto::eval(proto::child_c<1>(expr),ctx);
+
+						reflect_once(Vect3d(0,0,0),result,geometry);
 					} else {
+						result = proto::eval(proto::child_c<0>(expr),ctx);
 
 					}
 					return proto::child_c<0>(expr).eval(ctx.particle_);
@@ -520,6 +554,9 @@ struct Label
 
 struct Dx
     : proto::terminal<dx_>::type {};
+
+struct Normal
+    : proto::terminal<normal_>::type {};
 
 
 template<typename T, typename ParticlesType>

@@ -69,7 +69,7 @@ public:
 		/*
 		 * Kill any points within spheres
 		 */
-		points_alive = first(b=spheres, norm_(dx) < spheres_radius[b],false,true);
+		points_alive = first_(b=spheres, norm_(dx) < spheres_radius[b],false,true);
 
 		/*
 		 * Check no points within spheres

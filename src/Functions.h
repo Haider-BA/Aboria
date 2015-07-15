@@ -136,7 +136,7 @@ namespace Aboria {
 
 
     ABORIA_TERNARY_FUNCTION(sphere_, sphere_fun, GeometryDomain, proto::tag::function );
-    ABORIA_TERNARY_FUNCTION(sphere_, sphere_fun, GeometryDomain, tag::geometries_ );
+    ABORIA_TERNARY_FUNCTION(spheres_, sphere_fun, GeometryDomain, tag::geometries_ );
 
 	
     template< typename T >
