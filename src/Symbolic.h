@@ -65,7 +65,6 @@ struct label_ {
 namespace tag {
 		struct sum_;
 		struct first_;
-		struct geometries_;
 	}
 
 template<typename Expr>
@@ -144,23 +143,46 @@ struct DataVectorGrammar
                        , proto::_value >
      {};
 
-    struct SphereGrammar
-       : proto::function<
-             proto::terminal< sphere_fun >, 
-             DataVectorGrammar, DataVectorGrammar, DataVectorGrammar> 
-             
-    {};
+	template <typename T>
+	  struct geometry_ {
+		typedef T result_type;
 
-    struct SpheresGrammar
-              : proto::function<
-                    proto::terminal< sphere_fun >,
-                    DataVectorGrammar, DataVectorGrammar, DataVectorGrammar>
+		result_type operator()(const Vect3d& centre, const double radius, const bool in) const
+		{
+			return T(centre,radius,in);
+		}
+	};
 
-           {};
+
+	template <typename T>
+	  struct geometries_ {
+		typedef T result_type;
+		
+		result_type operator()(const Vect3d& centre, const double radius, const bool in) const
+		{
+			return T(centre,radius,in);
+		}
+	};
+
+    struct GeometryGrammar
+    	: proto::or_<
+		proto::terminal< geometry_<_> >,
+		proto::function< GeometryGrammar, DataVectorGrammar, DataVectorGrammar, DataVectorGrammar>
+	> {}; 
+
+	struct GeometriesGrammar
+    	: proto::or_<
+		proto::terminal< geometries_<_> >,
+		proto::function< GeometriesGrammar, LabelGrammar, DataVectorGrammar>
+	> {}; 
+
+
+
 
   	    struct dx_ {};
   	  struct normal_ {};
 
+	
 
   	  template<typename ParticlesType>
   	  struct ParticleCtx;
@@ -339,20 +361,40 @@ struct ParticleCtx
 			template<typename Expr, typename Expr0>
 			struct eval<Expr, proto::tag::bitwise_or, Expr0>
 			{
+
 				typedef Vect3d result_type;
 
 				result_type operator ()(Expr &expr, ParticleCtx const &ctx) const
 				{
-					Vect3d result;
-					if( proto::matches< proto::result_of::child_c<Expr,0>::type, GeometryGrammar >::value ) {
-						result = proto::eval(proto::child_c<1>(expr),ctx);
-
-						reflect_once(Vect3d(0,0,0),result,geometry);
+					typedef typename proto::result_of::child_c<Expr,1>::type geometry_expr_type;
+					typedef typename proto::result_of::child_c<geometry_expr_type,0>::type::value geometry_functor_type;
+					typedef typename boost::result_of<geometry_functor_type>::type geometry_type;
+					geometry_expr_type geometry_expr = proto::child_c<0>(expr);
+					Vect3d vector = proto::eval(proto::child_c<1>(expr),ctx);
+					if ( proto::matches< geometry_expr_type, GeometriesGrammar >::value ) {
+						typedef typename proto::result_of::child_c<geometry_expr_type,1>::type label_expr_type;
+						typedef typename proto::result_of::child_c<geometry_expr_type,2>::type arg1_expr_type;
+						typedef typename boost::result_of<LabelGrammar(label_expr_type)>::type particles_type_ref;
+						typedef typename std::remove_reference<particles_type_ref>::type particles_type;
+						particles_type_ref particlesb = LabelGrammar()(proto::child_c<1>(geometry_expr));
+						arg1_expr_type arg1_expr = proto::child_c<2>(expr);
+                    	//std::cout << "doing sum for particle "<<get<id>(ctx.particle_)<<std::endl;
+						while (bool finished = false) {
+							finished = true;	
+							for (auto i: particlesb.get_neighbours(vector + get<position>(ctx.particle_))) {
+                       			//std::cout << "doing neighbour "<<get<id>(std::get<0>(i))<<std::endl;
+								TwoParticleCtx<ParticlesType,particles_type> ctx2(std::get<1>(i),ctx.particle_,std::get<0>(i));
+								geometry_type geometry(ctx2.dx_,proto::eval(arg1_expr,ctx2));
+                      			//std::cout <<"conditional is true"<<std::endl;
+                       			//std::cout <<"result of evaluating expression is "<<proto::eval(arg,ctx2)<<std::endl;
+								if (reflect_once(Vect3d(0,0,0),vector,geometry))
+									finished = false;
+							}
+						}
 					} else {
-						result = proto::eval(proto::child_c<0>(expr),ctx);
-
+						reflect_once(Vect3d(0,0,0),vector,proto::eval(geometry_expr,ctx));
 					}
-					return proto::child_c<0>(expr).eval(ctx.particle_);
+					return vector;
 				}
 			};
 
@@ -388,7 +430,7 @@ struct ParticleCtx
 					child1_type conditional = proto::child_c<1>(expr);
 					child2_type arg = proto::child_c<2>(expr);
 					child3_type init = proto::child_c<3>(expr);
-					result_type sum = proto::eval(init,ctx2);
+					result_type sum = proto::eval(init,ctx);
                     //std::cout << "doing sum for particle "<<get<id>(ctx.particle_)<<std::endl;
 					for (auto i: particlesb.get_neighbours(get<position>(ctx.particle_))) {
                         //std::cout << "doing neighbour "<<get<id>(std::get<0>(i))<<std::endl;
@@ -437,7 +479,7 @@ struct ParticleCtx
 					child2_type arg = proto::child_c<2>(expr);
 					child3_type init = proto::child_c<3>(expr);
 
-					result_type sum = proto::eval(init,ctx2);
+					result_type sum = proto::eval(init,ctx);
 					//std::cout << "doing sum for particle "<<get<id>(ctx.particle_)<<std::endl;
 					for (auto i: particlesb.get_neighbours(get<position>(ctx.particle_))) {
 						//std::cout << "doing neighbour "<<get<id>(std::get<0>(i))<<std::endl;
@@ -558,6 +600,15 @@ struct Dx
 struct Normal
     : proto::terminal<normal_>::type {};
 
+template <typename T>
+struct GeometrySymbolic
+	: DataVectorExpr<typename proto::terminal<geometry_<T> >::type> {};
+
+
+template <typename T>
+struct GeometriesSymbolic
+	: DataVectorExpr<typename proto::terminal<geometries_<T> >::type> {};
+
 
 template<typename T, typename ParticlesType>
 struct DataVectorSymbolic
@@ -578,6 +629,13 @@ struct DataVectorSymbolic
 		return this->assign(proto::as_expr<DataVectorDomain>(expr));
 	}
 
+	template< typename Expr >
+	DataVectorSymbolic &operator +=(Expr const & expr) {
+        BOOST_MPL_ASSERT_NOT(( boost::is_same<T,id > ));
+		return this->increment(proto::as_expr<DataVectorDomain>(expr));
+	}
+
+
 private:
 
 	template< typename Expr >
@@ -585,17 +643,48 @@ private:
 	{
 		ParticlesType &particles = proto::value(*this).get_particles();
 
-		//TODO: Need to check that vector to assign to does not exist in depth > 0
-		std::for_each(particles.begin(),particles.end(),[&expr](particle_type& i) {
-			set<T>(i,expr.template eval<ParticlesType>(i));
-		});
+		buffer.resize(particles.size());
 
-        if (boost::is_same<T,position>::value) {
-            particles.update_positions();
-        }
+		//TODO: if vector to assign to does not exist in depth > 0, then don't need buffer
+		for (int i=0; i<particles.size(); i++) {
+			buffer[i] =  expr.template eval<ParticlesType>(particles[i]);	
+		}
+
+		for (int i=0; i<particles.size(); i++) {
+			set<T>(particles[i],buffer[i]);	
+		}
+
+        	if (boost::is_same<T,position>::value) {
+            		particles.update_positions();
+        	}
 
 		return *this;
 	}
+
+	template< typename Expr >
+	DataVectorSymbolic &increment(Expr const & expr)
+	{
+		ParticlesType &particles = proto::value(*this).get_particles();
+
+		buffer.resize(particles.size());
+
+		//TODO: if vector to assign to does not exist in depth > 0, then don't need buffer
+		for (int i=0; i<particles.size(); i++) {
+			buffer[i] = get<T>(particles[i]) + expr.template eval<ParticlesType>(particles[i]);	
+		}
+
+		for (int i=0; i<particles.size(); i++) {
+			set<T>(particles[i],buffer[i]);	
+		}
+
+        	if (boost::is_same<T,position>::value) {
+            		particles.update_positions();
+        	}
+
+		return *this;
+	}
+
+	std::vector<value_type> buffer;
 };
 
 

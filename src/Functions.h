@@ -34,10 +34,10 @@ namespace Aboria {
 
 
 
-#define ABORIA_UNARY_FUNCTION(function_name, function_to_wrap,  domain, tag) \
+#define ABORIA_UNARY_FUNCTION(function_name, function_to_wrap,  domain) \
     template<typename Expr> \
 	typename proto::result_of::make_expr<\
-	tag     \
+	proto::tag::function \
 	, domain \
 	, function_to_wrap     \
 	, Expr const &    \
@@ -50,10 +50,10 @@ namespace Aboria {
 		);  \
 	}\
 
-#define ABORIA_BINARY_FUNCTION(function_name, function_to_wrap,  domain, tag) \
+#define ABORIA_BINARY_FUNCTION(function_name, function_to_wrap,  domain) \
     template<typename Expr1, typename Expr2> \
 	typename proto::result_of::make_expr<\
-	tag    \
+	proto::tag::function \
 	, domain \
 	, function_to_wrap     \
 	, Expr1 const &    \
@@ -68,10 +68,10 @@ namespace Aboria {
 		);  \
 	}\
 
-#define ABORIA_TERNARY_FUNCTION(function_name, function_to_wrap,  domain, tag) \
+#define ABORIA_TERNARY_FUNCTION(function_name, function_to_wrap,  domain) \
     template<typename Expr1, typename Expr2, typename Expr3> \
 	typename proto::result_of::make_expr<\
-	tag   \
+	proto::tag::function \
 	, domain \
 	, function_to_wrap     \
 	, Expr1 const &    \
@@ -81,10 +81,10 @@ namespace Aboria {
 	function_name(Expr1 const &arg1, Expr2 const &arg2, Expr3 const &arg3)  \
 	{ \
 		return proto::make_expr<proto::tag::function, domain>( \
-				function_to_wrap ()   \
+				function_to_wrap()   \
 				, boost::ref(arg1) \
 				, boost::ref(arg2) \
-				, boost::ref(arg2) \
+				, boost::ref(arg3) \
 		);  \
 	}\
 
@@ -124,21 +124,6 @@ namespace Aboria {
     ABORIA_UNARY_FUNCTION(norm_, norm_fun, DataVectorDomain);
 
 
-	struct sphere_fun
-	{
-		typedef Sphere result_type;
-
-		Sphere operator()(const Vect3d& centre, const double radius, const bool in) const
-		{
-			return Sphere(centre,radius,in);
-		}
-	};
-
-
-    ABORIA_TERNARY_FUNCTION(sphere_, sphere_fun, GeometryDomain, proto::tag::function );
-    ABORIA_TERNARY_FUNCTION(spheres_, sphere_fun, GeometryDomain, tag::geometries_ );
-
-	
     template< typename T >
 	struct reflect_fun
 	{
@@ -148,16 +133,16 @@ namespace Aboria {
 		{
             Vect3d result = to;
             reflect_once(from,result,geometry);
-			return to;
+			return result;
 		}
 	};
 
-    ABORIA_TERNARY_FUNCTION(reflect_, reflect_fun<Expr3>, DataVectorDomain, proto::tag::function );
+    ABORIA_TERNARY_FUNCTION(reflect_, reflect_fun<Expr3>, DataVectorDomain);
 
 
 
     ABORIA_TAGGED_FUNCTION(sum_,tag::sum_);
     ABORIA_TAGGED_FUNCTION(first_,tag::first_);
 
-
+}
 #endif /* FUNCTIONS_H_ */

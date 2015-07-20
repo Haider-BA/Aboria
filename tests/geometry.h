@@ -82,6 +82,8 @@ public:
 		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
 		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);
 
+		GeometrySymbolic<Sphere> sphere_;		
+
         position_ = Vect3d(0,-0.4,0);
         position_ = Vect3d(0,0.3,0) | sphere_(position_,0.5);
 		TS_ASSERT_DELTA(get<position>(particles[0])[0],0,tol);

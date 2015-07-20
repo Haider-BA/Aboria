@@ -85,7 +85,7 @@ public:
 		 * Diffusion step for points and reflect off spheres
 		 */
 		for (int i = 0; i < timesteps; ++i) {
-			points_d_position = std::sqrt(2*D*dt)*N | spheres_(b=spheres,dx,spheres_radius[b]);
+			points_d_position += std::sqrt(2*D*dt)*N | spheres_(b=spheres,spheres_radius[b]);
 			points_position = points_position + points_d_position;
 		}
 
