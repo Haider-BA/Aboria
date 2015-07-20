@@ -541,14 +541,15 @@ public:
 		setup_datas_for_writing(size_t n, vtkSmartPointer<vtkFloatArray>* datas, vtkUnstructuredGrid *grid):
 			n(n),datas(datas),grid(grid){}
         template< typename U > void operator()(U i) {
-            std::string name = mpl::at<type_vector,typename U::value>::type::name;
+            typedef typename mpl::at<type_vector,U>::type variable_type;
+            std::string name = variable_type().name;
             datas[i] = vtkFloatArray::SafeDownCast(grid->GetPointData()->GetArray(name.c_str()));
 			if (!datas[i]) {
 				datas[i] = vtkSmartPointer<vtkFloatArray>::New();
 				datas[i]->SetName(name.c_str());
 				grid->GetPointData()->AddArray(datas[i]);
 			}
-			typedef typename mpl::at<type_vector,typename U::value>::type::value_type data_type;
+			typedef typename mpl::at<type_vector,U>::type::value_type data_type;
             if (boost::is_same<data_type, Vect3d>::value) {
                 datas[i]->SetNumberOfComponents(3);
             } else {

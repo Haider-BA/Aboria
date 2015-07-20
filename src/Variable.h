@@ -20,7 +20,7 @@ struct Variable {
 
 #define ABORIA_VARIABLE(NAME,DATA_TYPE,NAME_STRING)      \
     struct BOOST_PP_CAT(NAME,_description) {                            \
-    	const char *name = NAME_STRING; \
+    	static constexpr char* name = NAME_STRING; \
     };                                                   \
     typedef Variable<DATA_TYPE,BOOST_PP_CAT(NAME,_description)> NAME;   \
 
