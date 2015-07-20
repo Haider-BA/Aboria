@@ -27,7 +27,6 @@ public:
 		const double tol = GEOMETRY_TOLERANCE;
 
 		ABORIA_VARIABLE(radius,double,"radius")
-		ABORIA_VARIABLE(d_position,double,"change in position")
 
 		Particles<radius> spheres;
 
@@ -41,15 +40,15 @@ public:
 		spheres.push_back(Vect3d(5,0,0));
 		spheres[1].set<radius>(2.0);
 		spheres.push_back(Vect3d(0,-5,0));
-		spheres[1].set<radius>(1.5);
+		spheres[2].set<radius>(1.5);
 		spheres.push_back(Vect3d(0,0,5));
-		spheres[1].set<radius>(1.0);
+		spheres[3].set<radius>(1.0);
 
     	spheres.init_neighbour_search(Vect3d(-L,-L,-L),Vect3d(L,L,L),4,Vect3b(true,true,true));
 
-		Particles<d_position> points;
+		Particles<> points;
 		std::uniform_real_distribution<double> uni(-L,L);
-		for (int i = 0; i < 100; ++i) {
+		for (int i = 0; i < 1000; ++i) {
 			points.push_back(Vect3d(uni(generator),uni(generator),uni(generator)));
 		}
 
@@ -57,7 +56,6 @@ public:
 		auto spheres_radius = get_vector<radius>(spheres);
 
 		auto points_position = get_vector<position>(points);
-		auto points_d_position = get_vector<d_position>(points);
 		auto points_alive = get_vector<alive>(points);
 
 
@@ -65,6 +63,8 @@ public:
 		Label<1> b;
 		Dx dx;
 		Normal N;
+		GeometriesSymbolic<Sphere> spheres_;		
+		VectorSymbolic<double> vector;		
 
 		/*
 		 * Kill any points within spheres
@@ -75,30 +75,29 @@ public:
 		 * Check no points within spheres
 		 */
 		for(auto i: points) {
-			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(0,0,0)), 1.0);
-			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(5,0,0)), 2.0);
-			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(0,-5,0)), 1.5);
-			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(0,0,5)), 1.0);
+			TS_ASSERT_RELATION(std::greater<double>, norm(get<position>(i) - Vect3d(0,0,0)), 1.0);
+			TS_ASSERT_RELATION(std::greater<double>, norm(get<position>(i) - Vect3d(5,0,0)), 2.0);
+			TS_ASSERT_RELATION(std::greater<double>, norm(get<position>(i) - Vect3d(0,-5,0)), 1.5);
+			TS_ASSERT_RELATION(std::greater<double>, norm(get<position>(i) - Vect3d(0,0,5)), 1.0);
 		}
 
 		/*
 		 * Diffusion step for points and reflect off spheres
 		 */
 		for (int i = 0; i < timesteps; ++i) {
-			points_d_position += std::sqrt(2*D*dt)*N | spheres_(b=spheres,spheres_radius[b]);
-			points_position = points_position + points_d_position;
+			points_position += std::sqrt(2*D*dt)*vector(N,N,N) | spheres_(b=spheres,spheres_radius[b]);
 		}
 
 		/*
 		 * Check still no points within spheres
 		 */
 		for(auto i: points) {
-			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(0,0,0)), 1.0);
-			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(5,0,0)), 2.0);
-			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(0,-5,0)), 1.5);
-			TS_ASSERT_RELATION(std::greater<double>, norm(i.get_position() - Vect3d(0,0,5)), 1.0);
+			TS_ASSERT_RELATION(std::greater<double>, norm(get<position>(i) - Vect3d(0,0,0)), 1.0);
+			TS_ASSERT_RELATION(std::greater<double>, norm(get<position>(i) - Vect3d(5,0,0)), 2.0);
+			TS_ASSERT_RELATION(std::greater<double>, norm(get<position>(i) - Vect3d(0,-5,0)), 1.5);
+			TS_ASSERT_RELATION(std::greater<double>, norm(get<position>(i) - Vect3d(0,0,5)), 1.0);
 		}
 	}
-
+};
 
 #endif /* DIFFUSION_AROUND_SPHERES_H_ */
