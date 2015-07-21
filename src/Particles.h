@@ -220,7 +220,7 @@ public:
 		const int n = data.size();
 		for (int index = 0; index < n; ++index) {
 			value_type& i = data[index];
-			if (i.template get<alive>() == false) {
+			while (i.template get<alive>() == false) {
 				i.deep_copy(*(data.cend()-1));
 				if (track_ids) id_to_index[i.template get<id>()] = index;
 				data.pop_back();
@@ -498,16 +498,22 @@ public:
 		write_from_tuple(tuple_type &write_from, int index, vtkSmartPointer<vtkFloatArray>* datas):
 			write_from(write_from),index(index),datas(datas){}
 
-        template< typename U > void operator()(U i) {
+        template< typename U > 
+		typename boost::enable_if<boost::is_arithmetic<typename std::tuple_element<U::value,tuple_type>::type> >::type
+        operator()(U i) {
             typedef typename std::tuple_element<U::value,tuple_type>::type data_type;
             data_type &write_from_elem = std::get<U::value>(write_from);
-            if (boost::is_same<data_type,Vect3d>::value) {
-                datas[i]->SetTuple3(index,write_from_elem[0],
-                                              write_from_elem[1],
-                                              write_from_elem[2]);
-            } else {
-			    datas[i]->SetValue(index,write_from_elem);
-            }
+			datas[i]->SetValue(index,write_from_elem);
+        }
+
+        template< typename U >
+		typename boost::enable_if<boost::is_same<typename std::tuple_element<U::value,tuple_type>::type,Vect3d> >::type
+        operator()(U i) {
+            typedef typename std::tuple_element<U::value,tuple_type>::type data_type;
+            data_type &write_from_elem = std::get<U::value>(write_from);
+            datas[i]->SetTuple3(index,write_from_elem[0],
+                                      write_from_elem[1],
+                                      write_from_elem[2]);
         }
 
         tuple_type &write_from;
@@ -542,11 +548,11 @@ public:
 			n(n),datas(datas),grid(grid){}
         template< typename U > void operator()(U i) {
             typedef typename mpl::at<type_vector,U>::type variable_type;
-            std::string name = variable_type().name;
-            datas[i] = vtkFloatArray::SafeDownCast(grid->GetPointData()->GetArray(name.c_str()));
+            const char *name = variable_type().name;
+            datas[i] = vtkFloatArray::SafeDownCast(grid->GetPointData()->GetArray(name));
 			if (!datas[i]) {
 				datas[i] = vtkSmartPointer<vtkFloatArray>::New();
-				datas[i]->SetName(name.c_str());
+				datas[i]->SetName(name);
 				grid->GetPointData()->AddArray(datas[i]);
 			}
 			typedef typename mpl::at<type_vector,U>::type::value_type data_type;

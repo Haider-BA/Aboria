@@ -36,13 +36,15 @@ int main(int argc, char **argv) {
 	spheres.push_back(Vect3d(0,0,5));
 	spheres[3].set<radius>(1.0);
 
-    spheres.init_neighbour_search(Vect3d(-L,-L,-L),Vect3d(L,L,L),4,Vect3b(true,true,true));
-
 	Particles<> points;
-	std::uniform_real_distribution<double> uni(-L,L);
-	for (int i = 0; i < 1000; ++i) {
+	std::uniform_real_distribution<double> uni(-L/5,L/5);
+	for (int i = 0; i < 10000; ++i) {
 	    points.push_back(Vect3d(uni(generator),uni(generator),uni(generator)));
 	}
+
+
+    points.init_neighbour_search(Vect3d(-L/5,-L/5,-L/5),Vect3d(L/5,L/5,L/5),4,Vect3b(true,true,true));
+    spheres.init_neighbour_search(Vect3d(-L,-L,-L),Vect3d(L,L,L),4,Vect3b(false,false,false));
 
 	auto spheres_position = get_vector<position>(spheres);
 	auto spheres_radius = get_vector<radius>(spheres);
@@ -60,22 +62,41 @@ int main(int argc, char **argv) {
 
 	auto grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
 
+    int count_before=0;
+    for(auto i: points) {
+        if (norm(get<position>(i)-get<position>(spheres[0])) < get<radius>(spheres[0])) {
+            count_before++;
+        }
+    }
+
 	/*
 	 * Kill any points within spheres
 	 */
-	points_alive = first_(b=spheres, norm_(dx) < spheres_radius[b],false,true);
+	points_alive = !sum_(b=spheres, norm_(dx) < spheres_radius[b],true,false);
+
+
+    int count_after=0;
+    for(auto i: points) {
+        if (norm(get<position>(i)-get<position>(spheres[0])) < get<radius>(spheres[0])) {
+            count_after++;
+        } 
+    }
+
+    std::cout <<" found "<<count_before<<" before and "<<count_after<<" after"<<std::endl;
 
     points.copy_to_vtk_grid(grid);
-	Visualisation::vtkWriteGrid("vis/points",0,grid);
+	Visualisation::vtkWriteGrid("vis/pointsInit",0,grid);
 
 	/*
 	 * Diffusion step for points and reflect off spheres
 	 */
 	for (int i = 1; i < timesteps; ++i) {
         if (i%10==0) {
+            std::cout << "." << std::flush;
 	        points.copy_to_vtk_grid(grid);
 		    Visualisation::vtkWriteGrid("vis/points",i/10,grid);
         }
 		points_position += std::sqrt(2*D*dt)*vector(N,N,N) | spheres_(b=spheres,spheres_radius[b]);
 	}
+    std::cout << std::endl;
 }
