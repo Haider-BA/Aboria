@@ -525,18 +525,25 @@ public:
 	    read_into_tuple(tuple_type &read_into, int index, vtkSmartPointer<vtkFloatArray>* datas):
 		    read_into(read_into),index(index),datas(datas){}
 
-        template< typename U > void operator()(U i) {
+        template< typename U > 
+		typename boost::enable_if<boost::is_arithmetic<typename std::tuple_element<U::value,tuple_type>::type> >::type
+        operator()(U i) {
             typedef typename std::tuple_element<U::value,tuple_type>::type data_type;
             data_type &read_into_elem = std::get<U::value>(read_into);
-            if (boost::is_same<data_type,Vect3d>::value) {
-				double *data = datas[i]->GetTuple3(index);
-                read_into_elem[0] = data[0];
-                read_into_elem[1] = data[1];
-                read_into_elem[2] = data[2];
-            } else {
-                read_into_elem = datas[i]->GetValue(index);
-            }
+            read_into_elem = datas[i]->GetValue(index);
         }
+
+        template< typename U >
+		typename boost::enable_if<boost::is_same<typename std::tuple_element<U::value,tuple_type>::type,Vect3d> >::type
+        operator()(U i) {
+             typedef typename std::tuple_element<U::value,tuple_type>::type data_type;
+            data_type &read_into_elem = std::get<U::value>(read_into);
+			double *data = datas[i]->GetTuple3(index);
+            read_into_elem[0] = data[0];
+            read_into_elem[1] = data[1];
+            read_into_elem[2] = data[2];
+        }
+
 
         tuple_type &read_into;
 		int index;
