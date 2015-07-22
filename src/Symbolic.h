@@ -152,6 +152,26 @@ struct DataVectorGrammar
 	};
 
 
+    template <typename... T>
+    struct particles_list_ {
+        typedef mpl::int_<sizeof...(T)> order;
+
+        generator_(const T&... args):args(args){};
+
+        std::tuple< const T&... > args;
+    };
+
+/*
+    template<>
+    struct generator_<int> {
+        typedef mpl::int_<0> order;
+
+        generator_(unsigned int n):n(n){};
+
+        int n;
+    };
+    */
+
 	template <typename T>
 	  struct geometries_ {
 		typedef T result_type;
@@ -745,6 +765,133 @@ template<typename T, typename ParticlesType>
 DataVectorSymbolic<T,ParticlesType> get_vector(ParticlesType &p) {
 	return DataVectorSymbolic<T,ParticlesType>(p);
 }
+
+
+
+template<typename P, typename... R>
+struct SinkSourceSymbolic {};
+
+template<typename P, typename R1, typename R2>
+struct SinkSourceSymbolic<P,std::tuple<R1,R2> >
+	: DataVectorExpr<typename proto::terminal<std::pair<P,std::tuple<R1,R2> > >::type> {};
+
+    typedef typename std::tuple<R1,R2> reactant_type
+	typedef typename proto::terminal<std::pair<P,reactant_type> >::type expr_type;
+
+
+	explicit SinkSourceSymbolic(P& arg1, reactant_type& arg2)
+	: DataVectorExpr<expr_type>( expr_type::make(std::pair<P,reactant_type>(arg1,arg2)) )
+	  {}
+
+	template< typename Expr >
+	SinkSourceSymbolic &operator =(Expr const & expr) {
+		return this->assign(proto::as_expr<DataVectorDomain>(expr));
+	}
+
+
+private:
+
+	template< typename Expr >
+	SourceSymbolic &assign(Expr const & expr)
+	{
+		const R1 &reactant1 = std::get<0>(proto::value(*this).second);
+		const R2 &reactant2 = std::get<1>(proto::value(*this).second);
+        
+        //do_something
+        
+        return *this;
+	}
+
+};
+
+template<typename P, typename R1>
+struct SinkSourceSymbolic<P,std::tuple<R1> >
+	: DataVectorExpr<typename proto::terminal<std::pair<P,std::tuple<R1> > >::type> {};
+
+    typedef typename std::tuple<const R1&> reactant_type
+	typedef typename proto::terminal<std::pair<P,reactant_type> >::type expr_type;
+
+
+	explicit SinkSourceSymbolic(P& arg1, reactant_type& arg2)
+	: DataVectorExpr<expr_type>( expr_type::make(std::pair<P,reactant_type>(arg1,arg2)) )
+	  {}
+
+	template< typename Expr >
+	SinkSourceSymbolic &operator =(Expr const & expr) {
+		return this->assign(proto::as_expr<DataVectorDomain>(expr));
+	}
+
+
+private:
+
+	template< typename Expr >
+	SourceSymbolic &assign(Expr const & expr)
+	{
+		const R1 &reactant = std::get<0>(proto::value(*this).second);
+        
+        //do_something
+        
+        return *this;
+	}
+
+};
+
+template<typename P>
+struct SinkSourceSymbolic<P,unsigned int>
+	: DataVectorExpr<typename proto::terminal<std::pair<P,unsigned int> >::type> {};
+
+    typedef unsigned int reactant_type
+	typedef typename proto::terminal<std::pair<P,reactant_type> >::type expr_type;
+
+
+	explicit SinkSourceSymbolic(P& arg1, reactant_type& arg2)
+	: DataVectorExpr<expr_type>( expr_type::make(std::pair<P,reactant_type>(arg1,arg2)) )
+	  {}
+
+	template< typename Expr >
+	SinkSourceSymbolic &operator =(Expr const & expr) {
+		return this->assign(proto::as_expr<DataVectorDomain>(expr));
+	}
+
+
+private:
+
+    struct create_particle {
+        create_particle(const Vect3d& p):p(p) {};
+        template<typename Expr>
+        void operator()(Expr const & offset_expr) const {
+            T::value_type new_particle(p);
+            set<position>(new_particle,offset_expr.template eval<ParticlesType>(new_particle))
+        }
+        const Vect3d& p;
+    }
+
+	template< typename Expr >
+	SinkSourceSymbolic &assign(Expr const & expr)
+	{
+		const unsigned int n = proto::value(*this).second;
+        P products = proto::value(*this).first;
+
+        for(unsigned int i = 0; i < n; i++) {
+            const Vect3d base_position = expr.template eval<ParticlesType>();
+            boost::fusion::for_each(products,base_position);
+        }
+        
+        return *this;
+	}
+
+};
+
+template<typename ...P>
+SinkSourceSymbolic<std::tuple<P...>,unsigned int> make_sink_source(const std::tuple<P...> p, unsigned int n) {
+    return SinkSourceSymbolic(p,n);
+}
+
+template<typename ...T>
+SinkSourceSymbolic<std::tuple<Particles<T...> >,unsigned int> make_sink_source(const Particles<T...> p, unsigned int n) {
+    return SinkSourceSymbolic(std::make_tuple(p),n);
+}
+
 
 }
 
