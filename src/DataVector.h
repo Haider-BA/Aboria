@@ -16,6 +16,7 @@ template<typename T, typename ParticlesType>
 class DataVector {
 public:
 	typedef T variable_type;
+	typedef ParticlesType particles_type;
 	typedef typename T::value_type value_type;
 
 	DataVector(ParticlesType& particles):
