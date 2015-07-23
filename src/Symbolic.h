@@ -759,28 +759,126 @@ private:
 	std::vector<value_type> buffer;
 };
 
-
-
 template<typename T, typename ParticlesType>
 DataVectorSymbolic<T,ParticlesType> get_vector(ParticlesType &p) {
 	return DataVectorSymbolic<T,ParticlesType>(p);
 }
 
 
+struct no_position_terminal:
+    proto::or_<
+        proto::and_<
+            proto::terminal<_>,
+            proto::not_<terminal<DataVector<position,_> >
+        >
+      , proto::nary_expr< proto::_, proto::vararg< no_datavector_terminal > >
+    >
 
-template<typename P, typename... R>
+struct with_position_terminal:
+    proto::or_<
+        proto::when<
+            proto::terminal<DataVector<position,_>,
+            , proto::_value
+        >
+        , proto::when< 
+            proto::not_<proto::or_<
+                proto::terminal<_>
+                , proto::nary_expr<_, proto::vararg< no_position_terminal > > 
+            > >
+            , proto::_state
+        >
+    >
+
+
+struct create_particle {
+    create_particle(const Vect3d& p):p(p) {};
+    template<typename Expr>
+    void operator()(Expr const & offset_expr) const {
+        T::value_type new_particle(p);
+        set<position>(new_particle,offset_expr.template eval<ParticlesType>(new_particle));
+        with_position_terminal(offset_expr).get_particles().push_back(p);
+    }
+    const Vect3d& p;
+}
+
+struct const_expr:
+    proto::or_<
+        proto::and_<
+            proto::terminal<_>
+            , proto::not_<proto::terminal< DataVector<_,_> > >
+        >
+        , proto::nary_expr<_, proto::vararg<const_expr> >
+
+struct get_particles_data: proto::callable {
+    template<typename V, typename PT>
+    PT &operator()(DataVector<V,PT> & arg) const {
+        return arg.get_particles();
+    }
+};
+
+struct univariate_expr:
+    proto::or_<
+        proto::when< 
+            proto::terminal< DataVector<_,_> >
+            , get_particles_data(proto::_value)
+        >
+        proto::when< 
+            proto::unary_expr<_, univariate_expr>
+            , univariate_expr(proto::_left)
+        >
+        proto::when< 
+            proto::binary_expr<_, const_expr, univariate_expr>
+            , univariate_expr(proto::_right)
+        >
+        proto::when< 
+            proto::binary_expr<_, univariate_expr, const_expr>
+            , univariate_expr(proto::_left)
+        >
+        proto::when< 
+            proto::and_<
+                proto::binary_expr<_, univariate_expr, univariate_expr>
+                , boost::is_same<univariate_expr(proto::_left),univariate_expr(proto::_right)>
+            >
+            , univariate_expr(proto::_left)
+        >
+    >
+
+struct bivariate_expr:
+    proto::or_<
+        proto::when< 
+            proto::unary_expr<_, bivariate_expr>
+            , bivariate_expr(proto::_left)
+        >
+        proto::when< 
+            proto::binary_expr<_, const_expr, bivariate_expr>
+            , bivariate_expr(proto::_right)
+        >
+        proto::when< 
+            proto::binary_expr<_, bivariate_expr, const_expr>
+            , bivariate_expr(proto::_left)
+        >
+        proto::when< 
+            proto::and_<
+                proto::binary_expr<_, univariate_expr, univariate_expr>
+                , proto::not_<boost::is_same<univariate_expr(proto::_left),univariate_expr(proto::_right)> >
+            >
+            , std::make_pair(univariate_expr(proto::_left),univariate_expr(proto::_right))
+        >
+    >
+
+
+template<typename P, typename R, class Enable = void>
 struct SinkSourceSymbolic {};
 
-template<typename P, typename R1, typename R2>
-struct SinkSourceSymbolic<P,std::tuple<R1,R2> >
-	: DataVectorExpr<typename proto::terminal<std::pair<P,std::tuple<R1,R2> > >::type> {};
+template<typename P, typename R>
 
-    typedef typename std::tuple<R1,R2> reactant_type
-	typedef typename proto::terminal<std::pair<P,reactant_type> >::type expr_type;
+struct SinkSourceSymbolic<P, R, typename enable_if<proto::matches<R, bivariate_expr> >::type >
+	: DataVectorExpr<typename proto::terminal<std::pair<P,R> >::type> {};
 
+	typedef typename proto::terminal<std::pair<P,R> >::type expr_type;
 
-	explicit SinkSourceSymbolic(P& arg1, reactant_type& arg2)
-	: DataVectorExpr<expr_type>( expr_type::make(std::pair<P,reactant_type>(arg1,arg2)) )
+	explicit SinkSourceSymbolic(P& arg1, R& arg2)
+	: DataVectorExpr<expr_type>( expr_type::make(std::pair<P,R>(arg1,arg2)) )
 	  {}
 
 	template< typename Expr >
@@ -794,25 +892,34 @@ private:
 	template< typename Expr >
 	SourceSymbolic &assign(Expr const & expr)
 	{
-		const R1 &reactant1 = std::get<0>(proto::value(*this).second);
-		const R2 &reactant2 = std::get<1>(proto::value(*this).second);
+		const R &reactants = proto::value(*this).second;
+        P products = proto::value(*this).first;
         
-        //do_something
+        typedef typename proto::result_of<bivariate_expr(reactants)>::type::first_type reactant1_particles_type;
+        typedef typename proto::result_of<bivariate_expr(reactants)>::type::second_type reactant2_particles_type;
         
+        for (auto i: bivariate_expr(reactants).first) {
+            for (auto j: bivariate_expr(reactants).second.get_neighbours(get<position>(i))) {
+                if (reactants.template eval<reactant1_particles_type,reactant2_particles_type>(i,j)) {
+                    const Vect3d base_position = expr.template eval<reactant1_particles_type,reactant2_particles_type>(i,j);
+                    boost::fusion::for_each(products,base_position);
+                }
+            }
+        }
+
         return *this;
 	}
 
 };
 
-template<typename P, typename R1>
-struct SinkSourceSymbolic<P,std::tuple<R1> >
-	: DataVectorExpr<typename proto::terminal<std::pair<P,std::tuple<R1> > >::type> {};
+template<typename P, typename R>
+struct SinkSourceSymbolic<P, R, typename enable_if<proto::matches<R, univariate_expr> >::type >
+	: DataVectorExpr<typename proto::terminal<std::pair<P,R> >::type> {};
 
-    typedef typename std::tuple<const R1&> reactant_type
-	typedef typename proto::terminal<std::pair<P,reactant_type> >::type expr_type;
+	typedef typename proto::terminal<std::pair<P,R> >::type expr_type;
 
 
-	explicit SinkSourceSymbolic(P& arg1, reactant_type& arg2)
+	explicit SinkSourceSymbolic(P& arg1, R& arg2)
 	: DataVectorExpr<expr_type>( expr_type::make(std::pair<P,reactant_type>(arg1,arg2)) )
 	  {}
 
@@ -821,16 +928,23 @@ struct SinkSourceSymbolic<P,std::tuple<R1> >
 		return this->assign(proto::as_expr<DataVectorDomain>(expr));
 	}
 
-
 private:
 
 	template< typename Expr >
 	SourceSymbolic &assign(Expr const & expr)
 	{
-		const R1 &reactant = std::get<0>(proto::value(*this).second);
+		const R &reactant = proto::value(*this).second;
+        P products = proto::value(*this).first;
         
-        //do_something
+        typedef typename proto::result_of<univariate_expr(reactant)>::type reactant_particles_type;
         
+        for (auto & i: univariate_expr(reactant)) {
+            if (reactant.template eval<reactant_particles_type>(i)) {
+                const Vect3d base_position = expr.template eval<reactant_particles_type>(i);
+                boost::fusion::for_each(products,base_position);
+            }
+        }
+
         return *this;
 	}
 
@@ -856,16 +970,6 @@ struct SinkSourceSymbolic<P,unsigned int>
 
 private:
 
-    struct create_particle {
-        create_particle(const Vect3d& p):p(p) {};
-        template<typename Expr>
-        void operator()(Expr const & offset_expr) const {
-            T::value_type new_particle(p);
-            set<position>(new_particle,offset_expr.template eval<ParticlesType>(new_particle))
-        }
-        const Vect3d& p;
-    }
-
 	template< typename Expr >
 	SinkSourceSymbolic &assign(Expr const & expr)
 	{
@@ -873,7 +977,7 @@ private:
         P products = proto::value(*this).first;
 
         for(unsigned int i = 0; i < n; i++) {
-            const Vect3d base_position = expr.template eval<ParticlesType>();
+            const Vect3d base_position = expr.template eval();
             boost::fusion::for_each(products,base_position);
         }
         
@@ -882,14 +986,31 @@ private:
 
 };
 
-template<typename ...P>
-SinkSourceSymbolic<std::tuple<P...>,unsigned int> make_sink_source(const std::tuple<P...> p, unsigned int n) {
-    return SinkSourceSymbolic(p,n);
+template<typename ...Expr>
+struct sink_ {
+    sink_(Expr... expr):expr(expr) {};
+    std::tuple<Expr...> data;
 }
 
-template<typename ...T>
-SinkSourceSymbolic<std::tuple<Particles<T...> >,unsigned int> make_sink_source(const Particles<T...> p, unsigned int n) {
-    return SinkSourceSymbolic(std::make_tuple(p),n);
+template<typename ...Expr>
+sink_ sink(Expr... expr) {
+    return sink_(expr);
+}
+
+template<typename Expr>
+struct source_{
+    sink_(Expr expr):expr(expr) {};
+    Expr data;
+}
+
+template<typename Expr>
+source_ source(Expr expr) {
+    return source_(expr);
+}
+
+template<typename P, typename R>
+SinkSourceSymbolic<P,R> operator+(sink_<P> products, source_<R> reactants) {
+    return SinkSourceSymbolic<P,R>(products,reactants);
 }
 
 
