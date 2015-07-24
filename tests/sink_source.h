@@ -75,8 +75,8 @@ public:
        	TS_ASSERT_EQUALS(get<position>(particles[4])[2],1.0);
 
     	ParticlesType particles2;
-    	auto s2 = get_vector<scalar>(particles);
-    	auto p2 = get_vector<position>(particles);
+    	auto s2 = get_vector<scalar>(particles2);
+    	auto p2 = get_vector<position>(particles2);
 
         sink(p-Vect3d(0.3,0.2,0.1),p2) + source(1) = Vect3d(1.3,1.2,1.1); 
 
@@ -89,6 +89,51 @@ public:
        	TS_ASSERT_EQUALS(get<position>(particles2[0])[1],1.2);
        	TS_ASSERT_EQUALS(get<position>(particles2[0])[2],1.1);
 
+    }
+    void test_create_univariate_particles(void) {
+        ABORIA_VARIABLE(scalar,double,"scalar")
+    	typedef Particles<scalar> ParticlesType;
+    	ParticlesType particles;
+
+    	auto s = get_vector<scalar>(particles);
+    	auto p = get_vector<position>(particles);
+		
+        Normal N;
+		VectorSymbolic<double> vector;		
+
+        sink(p) + source(2) = Vect3d(0.3,0.2,0.1); 
+
+       	TS_ASSERT_EQUALS(particles.size(),2);
+       	TS_ASSERT_EQUALS(get<position>(particles[0])[0],0.3);
+       	TS_ASSERT_EQUALS(get<position>(particles[0])[1],0.2);
+       	TS_ASSERT_EQUALS(get<position>(particles[0])[2],0.1);
+       	TS_ASSERT_EQUALS(get<position>(particles[1])[0],0.3);
+       	TS_ASSERT_EQUALS(get<position>(particles[1])[1],0.2);
+       	TS_ASSERT_EQUALS(get<position>(particles[1])[2],0.1);
+
+        sink(p) + source(s==s) = p+1;
+
+        TS_ASSERT_EQUALS(particles.size(),4);
+       	TS_ASSERT_EQUALS(get<position>(particles[2])[0],1.3);
+       	TS_ASSERT_EQUALS(get<position>(particles[2])[1],1.2);
+       	TS_ASSERT_EQUALS(get<position>(particles[2])[2],1.1);
+       	TS_ASSERT_EQUALS(get<position>(particles[3])[0],1.3);
+       	TS_ASSERT_EQUALS(get<position>(particles[3])[1],1.2);
+       	TS_ASSERT_EQUALS(get<position>(particles[3])[2],1.1);
+
+        sink(p) + source(p[0]<0.0) = p;
+
+        TS_ASSERT_EQUALS(particles.size(),4);
+
+        sink(p+2) + source(p[0]>1.0) = p;
+
+        TS_ASSERT_EQUALS(particles.size(),6);
+       	TS_ASSERT_EQUALS(get<position>(particles[4])[0],3.3);
+       	TS_ASSERT_EQUALS(get<position>(particles[4])[1],3.2);
+       	TS_ASSERT_EQUALS(get<position>(particles[4])[2],3.1);
+       	TS_ASSERT_EQUALS(get<position>(particles[5])[0],3.3);
+       	TS_ASSERT_EQUALS(get<position>(particles[5])[1],3.2);
+       	TS_ASSERT_EQUALS(get<position>(particles[5])[2],3.1);
     }
 };
 
